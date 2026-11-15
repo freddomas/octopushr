@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 22
 **Type:** afk
+**Modèle / effort :** opus / xhigh
 **Lire uniquement :** lld.md §3, §4, §7, §9, §13, ADR-0002..0005 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Le skill security-review ne laisse aucun constat haut/critique ouvert et la suite de tests d'attaque est verte.

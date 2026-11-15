@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 02
 **Type:** afk
+**Modèle / effort :** opus / high
 **Lire uniquement :** lld.md §1 (accès données), §2, §15, §16 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Les migrations s'appliquent sur une base vide, toutes les tables du LLD §2 ont RLS activé sans policy, les contraintes sont testées et npm test est vert.

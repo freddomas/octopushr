@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 14, 15, 17, 19, 20, 21
 **Type:** afk
+**Modèle / effort :** opus / high
 **Lire uniquement :** lld.md §13 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Les tests d'en-têtes passent (y compris caméra, workers, wasm), npm audit --omit=dev ne remonte aucune vulnérabilité haute/critique, le scan de secrets est propre et la suite complète reste verte.

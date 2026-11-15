@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 16
 **Type:** afk
+**Modèle / effort :** sonnet / medium
 **Lire uniquement :** spec.md stories 42–44, lld.md §11 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Un admin traite un pointage « à vérifier » et un « suspect » en validant ou rejetant avec commentaire ; le statut change, le pointage rejeté n'est plus compté et chaque action apparaît dans /admin/journal (tests verts).

@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 10, 13
 **Type:** afk
+**Modèle / effort :** sonnet / medium
 **Lire uniquement :** spec.md stories 48, 49, lld.md §12 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Sur /admin/diagnostic, avec le moteur simulé puis les vrais modèles, tous les scores s'affichent en direct avec marquage vert/rouge par seuil, la similarité contre un employé choisi est calculée sans rien enregistrer, et « Utiliser ces seuils » pré-remplit les paramètres (tests verts).

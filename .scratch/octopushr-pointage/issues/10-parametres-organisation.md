@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 06
 **Type:** afk
+**Modèle / effort :** sonnet / medium
 **Lire uniquement :** spec.md story 23, lld.md §2 (org_settings), §12 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Un admin de fixture modifie les paramètres de son organisation, les valeurs sont persistées, relues par getOrgSettings à chaque usage et tracées dans le journal ; les valeurs hors bornes et une autre organisation sont refusées (tests verts).

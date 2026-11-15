@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 06
 **Type:** afk
+**Modèle / effort :** opus / high
 **Lire uniquement :** spec.md stories 1–6, lld.md §4, ADR-0003 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Un admin de fixture enregistre le navigateur courant comme pointeuse, reçoit le cookie d'appareil, la session admin est fermée ; requirePointeuse accepte ce cookie et refuse (403) absent, inconnu ou révoqué (tests verts).

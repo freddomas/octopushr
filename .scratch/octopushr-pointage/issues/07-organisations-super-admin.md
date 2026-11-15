@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 06
 **Type:** afk
+**Modèle / effort :** opus / medium
 **Lire uniquement :** spec.md story 53, lld.md §2 (organizations, org_settings, admins), §3 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Connecté en super-admin de fixture, je crée une organisation avec son premier administrateur, ce dernier se connecte, et je peux désactiver/réactiver l'organisation (tests verts).

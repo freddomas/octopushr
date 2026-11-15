@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 16
 **Type:** afk
+**Modèle / effort :** sonnet / medium
 **Lire uniquement :** spec.md story 46, lld.md §11 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Le bouton Exporter télécharge un CSV UTF-8 reflétant les filtres actifs et uniquement l'organisation de l'admin, sans aucune donnée biométrique (test d'intégration vert).

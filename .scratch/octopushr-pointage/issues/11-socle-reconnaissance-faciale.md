@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 03
 **Type:** afk
+**Modèle / effort :** sonnet / high
 **Lire uniquement :** lld.md §1, §10 (service worker), §16, ADR-0002, docs/research/human-face-recognition.md (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Une page de test charge Human avec les modèles servis localement (aucune requête vers un CDN), détecte un visage fixture et renvoie un descripteur de 1024 valeurs ; le second chargement se fait depuis le cache du service worker hors ligne ; les temps de chargement sont mesurés (tests verts).

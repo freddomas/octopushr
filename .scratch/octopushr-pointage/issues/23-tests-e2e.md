@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 14, 15, 17, 18, 19, 20
 **Type:** afk
+**Modèle / effort :** sonnet / medium
 **Lire uniquement :** spec.md (toutes les stories), lld.md §16 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** npm run test:e2e exécute en vert les parcours de bout en bout avec moteur simulé et émulation Pixel 7, stables sur 3 exécutions.

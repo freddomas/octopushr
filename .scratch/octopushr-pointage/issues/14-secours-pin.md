@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 13
 **Type:** afk
+**Modèle / effort :** opus / high
 **Lire uniquement :** spec.md stories 29–32, lld.md §8 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Après 3 échecs de reconnaissance l'écran propose de valider sans visage ; le pointage est enregistré « à vérifier » avec photo ; 5 PIN inconnus consécutifs bloquent la pointeuse ; l'admin régénère un PIN (tests verts).

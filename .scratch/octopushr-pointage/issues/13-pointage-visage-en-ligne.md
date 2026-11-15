@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 09, 10, 12
 **Type:** afk
+**Modèle / effort :** opus / xhigh
 **Lire uniquement :** spec.md stories 16–28, lld.md §7, §14, ADR-0002 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Avec le moteur simulé, un employé enrôlé pointe Entrée puis Sortie depuis une pointeuse valide ; les cas refusés (pointeuse invalide, mauvais visage, scores sous seuil, séquence incohérente, PIN inconnu) sont refusés côté serveur avec photo et scores conservés ; quelques tests avec les vrais modèles passent (tests verts).

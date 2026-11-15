@@ -23,13 +23,14 @@ Tu reprends le projet **OctopusHR** : SaaS web de pointage (Entrée/Sortie) pour
 
 ## Règles d'orchestration (à respecter)
 1. Suis le skill **`implement-spec`** (installé globalement, `disable-model-invocation` : applique ses étapes à la main) : branche d'intégration `integration/pointage`, **un sous-agent implémenteur frais par ticket**, chacun dans son worktree (`isolation: "worktree"`, en arrière-plan), qui appelle le skill **`tdd`**, fusionne le tip d'intégration, ne pousse rien. Un agent « merger » (ou toi pour un fast-forward trivial) fusionne ensuite dans `integration/pointage`. Une fois tous les tickets faits : skill `code-review`, puis nettoyage des worktrees.
-2. Prompts aux agents : **pointeurs seulement** (chemin du ticket, de la spec, du LLD, des ADR) ; pas de copier-coller. Donne le `/goal` du ticket.
-3. **Frontière** : lance en parallèle tous les tickets dont les bloqueurs sont résolus (début : **03 et 04 en parallèle** ; puis 05, 06, 11 etc. selon l'index). Marque le ticket `Status: resolved` dans son fichier à la fusion.
-4. **Vérifie toi-même** après chaque fusion (`npm run lint && npm run typecheck && npm test && npm run build`) : les rapports d'agents ne sont pas une preuve. Les agents de sécurité (24) et de déploiement (26) sont des agents dédiés distincts.
-5. Le projet est indexé pour tokensave ? Sinon utilise Read/Grep normalement. Pas d'agent Explore pour de la recherche de code.
-6. `.claude/` est ignoré par git et ESLint (les worktrees y vivent). Commits en français, terminés par `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. Ne jamais committer de secret. Ne jamais pousser sur `main` sans demande.
-7. Toute action sortante ou irréversible (désactiver le SSO Vercel, déploiement prod, suppression) : confirme avec l'utilisateur.
-8. Utilise `mcp__ccd_turn__update_plan` / `wrap_up` comme le demande l'environnement.
+2. **Modèle et effort** : chaque ticket porte une ligne `**Modèle / effort :**` (sonnet par défaut ; opus pour authentification, données, sécurité). Passe-la à l'outil Agent via les paramètres `model` et `effort` (l'utilisateur a explicitement demandé ce réglage). Agents sans ticket : merger et exploration `sonnet`/`low`, correctifs après `code-review` `sonnet`/`high` (`opus`/`high` si auth ou données). Ne change pas ces valeurs sans accord.
+3. Prompts aux agents : **pointeurs seulement** (chemin du ticket, de la spec, du LLD, des ADR) ; pas de copier-coller. Donne le `/goal` du ticket.
+4. **Frontière** : lance en parallèle tous les tickets dont les bloqueurs sont résolus (début : **03 et 04 en parallèle** ; puis 05, 06, 11 etc. selon l'index). Marque le ticket `Status: resolved` dans son fichier à la fusion.
+5. **Vérifie toi-même** après chaque fusion (`npm run lint && npm run typecheck && npm test && npm run build`) : les rapports d'agents ne sont pas une preuve. Les agents de sécurité (24) et de déploiement (26) sont des agents dédiés distincts.
+6. Le projet est indexé pour tokensave ? Sinon utilise Read/Grep normalement. Pas d'agent Explore pour de la recherche de code.
+7. `.claude/` est ignoré par git et ESLint (les worktrees y vivent). Commits en français, terminés par `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. Ne jamais committer de secret. Ne jamais pousser sur `main` sans demande.
+8. Toute action sortante ou irréversible (désactiver le SSO Vercel, déploiement prod, suppression) : confirme avec l'utilisateur.
+9. Utilise `mcp__ccd_turn__update_plan` / `wrap_up` comme le demande l'environnement.
 
 ## Limites connues à garder en tête et à répéter honnêtement
 - La vivacité passive de Human **n'est pas fiable contre une vidéo rejouée** ; scores et descripteur sont calculés par le navigateur et **non vérifiables** par le serveur. Compensations : pointeuse enregistrée, photo conservée, revue RH, seuils réglables, défi aléatoire (option).

@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 05, 06
 **Type:** afk
+**Modèle / effort :** sonnet / medium
 **Lire uniquement :** spec.md stories 40, 41, 47, 51, lld.md §11, §5 (endpoints d'image) (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Avec des pointages de fixture sur deux organisations, un admin voit uniquement les siens dans /admin/pointages avec photo captée et photo de référence côte à côte, scores, méthode, statut, filtrés par date/employé/statut, en heure locale (tests verts).

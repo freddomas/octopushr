@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 20, 15, 14
 **Type:** afk
+**Modèle / effort :** sonnet / low
 **Lire uniquement :** spec.md (Testing Decisions), lld.md §12, §16 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Le document docs/test-manuel-pointeuse.md se suit pas à pas sur le téléphone, couvre tous les cas demandés et fournit un gabarit de rapport (scores, temps, verdict) ; un relecteur indépendant confirme qu'aucune étape n'est ambiguë.

@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 01, 23, 24, 25
 **Type:** afk
+**Modèle / effort :** sonnet / medium
 **Lire uniquement :** lld.md §15, spec.md (Further Notes) (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** L'URL de production du projet octopushr répond 200 sur /api/health, le parcours de fumée en production passe et le lien est transmis à l'utilisateur avec la procédure de test manuel.

@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 13
 **Type:** afk
+**Modèle / effort :** sonnet / high
 **Lire uniquement :** spec.md stories 33–39, lld.md §9, ADR-0004 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Avec le réseau coupé (Playwright), un pointage est mis en file et affiché « sous réserve » ; au retour du réseau il est synchronisé sans doublon, même si l'envoi est rejoué ; un échec de comparaison devient « suspect » (tests verts).

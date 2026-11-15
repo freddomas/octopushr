@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 04
 **Type:** afk
+**Modèle / effort :** opus / high
 **Lire uniquement :** lld.md §5, ADR-0005 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** encrypt/decrypt round-trip, rotation de clé, falsification détectée et mauvaise donnée associée refusée : tests verts, aucune clé dans le dépôt.

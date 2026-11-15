@@ -7,6 +7,7 @@ Documents de référence : `.scratch/octopushr-pointage/spec.md` (quoi), `.scrat
 ## Règles d'orchestration
 
 - Un agent frais par ticket, jamais réutilisé pour un autre ticket. Chaque ticket contient une ligne `/goal` à donner à l'implémenteur.
+- **Modèle et effort des sous-agents** : lis la ligne `**Modèle / effort :**` du ticket et passe-la telle quelle à l'outil Agent (`model` et `effort`). Règle de l'utilisateur : `sonnet` par défaut, `opus` pour les tickets touchant l'authentification, les paiements ou le modèle de données (aucun paiement dans ce projet). Les efforts (`low`/`medium`/`high`/`xhigh`) sont fixés dans les tickets, ne les change pas sans accord. Agents sans ticket : fusion (merger) `sonnet`/`low`, exploration `sonnet`/`low`, correctifs après `code-review` `sonnet`/`high` (`opus`/`high` si le correctif touche auth ou données).
 - Un ticket doit tenir dans un contexte frais : lire uniquement le ticket + les sections LLD qu'il cite.
 - Interface en français. Heures stockées en UTC, affichées dans le fuseau de l'organisation.
 - Ne jamais committer de secrets. `DATABASE_URL`, clés Supabase et secrets de session vivent dans les variables d'environnement Vercel / `.env.local`.

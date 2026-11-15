@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 02
 **Type:** afk
+**Modèle / effort :** sonnet / medium
 **Lire uniquement :** lld.md §10 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** La page /design (hors production) affiche tous les composants avec le logo Manoir OCTOPUS, le layout admin est correct à 375 px et 1280 px, et lint/typecheck/test/build sont verts.

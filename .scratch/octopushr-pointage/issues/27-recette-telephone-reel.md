@@ -3,6 +3,7 @@
 **Status:** ready-for-human
 **Blocked by:** 26
 **Type:** human
+**Modèle / effort :** - / -
 **Lire uniquement :** docs/test-manuel-pointeuse.md (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Le rapport de recette (tous les cas de docs/test-manuel-pointeuse.md + temps de chargement et temps par pointage) est rempli sur le téléphone réel et les seuils sont réglés ; décision d'acceptabilité prise.

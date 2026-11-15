@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 05, 08, 11
 **Type:** afk
+**Modèle / effort :** opus / high
 **Lire uniquement :** spec.md stories 8–15, lld.md §5, §6, ADR-0005 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Avec le moteur simulé, un admin enrôle un employé : consentement, 3 à 5 captures contrôlées, PIN généré et affiché une fois, profil chiffré en base et employé Actif ; des captures de qualité insuffisante ou de personnes différentes sont refusées ; réenrôler et supprimer fonctionnent (tests verts).

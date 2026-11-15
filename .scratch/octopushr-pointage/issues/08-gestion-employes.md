@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 06
 **Type:** afk
+**Modèle / effort :** sonnet / medium
 **Lire uniquement :** spec.md stories 7, 51, lld.md §2 (employees), §10 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Un admin de fixture crée un employé (nom seul), le voit « Visage à enrôler », le désactive puis le réactive ; un admin d'une autre organisation ne le voit jamais (tests verts).

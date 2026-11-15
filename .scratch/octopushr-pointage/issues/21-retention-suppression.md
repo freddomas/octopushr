@@ -3,6 +3,7 @@
 **Status:** ready-for-agent
 **Blocked by:** 13, 10
 **Type:** afk
+**Modèle / effort :** sonnet / medium
 **Lire uniquement :** spec.md stories 14, 50, lld.md §13 (purge), ADR-0005 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
 **/goal :** Une tâche planifiée supprime les photos de tentative plus vieilles que la rétention de l'organisation sans supprimer les lignes de pointage ; la suppression d'un profil facial efface physiquement descripteurs et photo de référence (tests verts).
