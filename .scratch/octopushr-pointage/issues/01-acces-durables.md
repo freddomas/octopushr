@@ -1,6 +1,6 @@
 # 01: Accès durables GitHub, Vercel, Supabase + dépôt de travail
 
-**Status:** ready-for-human
+**Status:** resolved
 **Blocked by:** None (can start immediately)
 **Type:** human
 **Lire uniquement :** spec.md (Further Notes), lld.md §8 (+ `GLOSSARY.md`, `CLAUDE.md`)
@@ -16,3 +16,11 @@
 - [ ] Domaine de production stable confirmé (`WEBAUTHN_RP_ID`, par défaut `octopushr.vercel.app`) et fuseau horaire par défaut des organisations confirmé
 - [ ] Dossier `/home/usr_codex/workspace/my_projects/OctopusHR` créé ; `CLAUDE.md`, `GLOSSARY.md`, `docs/`, `.scratch/` copiés dedans ; premier commit poussé
 - [ ] Aucun secret committé
+
+## Answer
+
+- GitHub : `gh` 2.104 connecté (compte freddomas, scopes repo/workflow/read:org), credential helper git HTTPS. Dépôt `freddomas/octopushr` (public), `main` poussé.
+- Vercel : connecteur autorisé ; projet `octopushr` (prj_zfRAC7Avaa9uAwPvIC4RoeFRyRAj, team_JIhhMm1KcelpnrALMsIzqnBn). `DATABASE_URL` présente en production (sensitive, non relisible). La protection SSO Vercel est active : à désactiver au ticket 17.
+- Supabase : connecteur OK, projet OctopusHR (cdmykxlqrkylyfpzglww), base vide. Pas de DATABASE_URL locale : base de test à trancher au ticket 04 (Postgres local ou connecteur).
+- Dépôt de travail : /home/usr_claude/Projects/OpenHR (le chemin /home/usr_codex n'existe pas sur ce serveur).
+- Reste pour le ticket 17 : SESSION_SECRET, WEBAUTHN_*, APP_URL et identifiants super-admin dans Vercel ; domaine par défaut octopushr.vercel.app ; fuseau par défaut Indian/Mauritius (à reconfirmer avant le ticket 06).
