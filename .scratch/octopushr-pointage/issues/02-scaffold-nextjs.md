@@ -1,6 +1,6 @@
 # 02: Squelette Next.js + outillage + route /api/health
 
-**Status:** ready-for-agent
+**Status:** resolved
 **Blocked by:** 01
 **Type:** afk
 **Lire uniquement :** lld.md §1, §9 (+ `GLOSSARY.md`, `CLAUDE.md`)
