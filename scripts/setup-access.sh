@@ -293,6 +293,7 @@ if command -v openssl >/dev/null 2>&1; then
   write_env BIOMETRIC_KEYS "{\"1\":\"$(openssl rand -base64 32 | tr -d '\n')\"}"
   write_env BIOMETRIC_KEY_VERSION "1"
   write_env CRON_SECRET "$(openssl rand -hex 32)"
+  write_env PIN_PEPPER "$(openssl rand -hex 32)"
 fi
 say "Compte super-administrateur (toi) : identifiant + mot de passe d'au moins 12 caractères."
 ask SUPER_ADMIN_USERNAME "Identifiant super-admin :"

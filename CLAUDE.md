@@ -1,6 +1,6 @@
 # OctopusHR
 
-SaaS web de pointage (entrée/sortie) pour smartphones Android, sans APK. Employés : matricule + reconnaissance faciale (Human, décision serveur) sur une pointeuse enregistrée. Admins : identifiant + mot de passe. Aucun autre module RH.
+SaaS web de pointage (entrée/sortie) pour smartphones Android, sans APK. Employés : PIN + reconnaissance faciale (Human, décision serveur) sur une pointeuse enregistrée. Admins : identifiant + mot de passe. Aucun autre module RH.
 
 Documents de référence : `.scratch/octopushr-pointage/spec.md` (quoi), `.scratch/octopushr-pointage/lld.md` (comment), `GLOSSARY.md` (vocabulaire), `docs/adr/` (décisions). Les tickets sont dans `.scratch/octopushr-pointage/issues/`.
 

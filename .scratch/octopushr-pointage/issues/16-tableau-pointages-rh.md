@@ -7,7 +7,7 @@
 
 **/goal :** Avec des pointages de fixture sur deux organisations, un admin voit uniquement les siens dans /admin/pointages avec photo captée et photo de référence côte à côte, scores, méthode, statut, filtrés par date/employé/statut, en heure locale (tests verts).
 
-**What to build:** `/admin/pointages` (tableau paginé 50/p : employé, matricule, type, heure locale, site, méthode, statut, scores, miniatures captée | référence, durée de session, badge « Sortie manquante » selon le seuil de l'organisation), clic ⇒ vue détail avec photos en grand ; endpoints d'image authentifiés (déchiffrement serveur, `no-store`) ; filtres date, employé, statut, méthode. Données de test par fixtures.
+**What to build:** `/admin/pointages` (tableau paginé 50/p : employé, type, heure locale, site, méthode, statut, scores, miniatures captée | référence, durée de session, badge « Sortie manquante » selon le seuil de l'organisation), clic ⇒ vue détail avec photos en grand ; endpoints d'image authentifiés (déchiffrement serveur, `no-store`) ; filtres date, employé, statut, méthode. Données de test par fixtures.
 
 - [ ] Requête scopée par organisation ; fuseau appliqué (changement de jour testé)
 - [ ] Images : seule la session admin de la bonne organisation y accède ; URL non devinable ; jamais en cache

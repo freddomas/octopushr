@@ -12,7 +12,7 @@ Une organisation veut savoir de façon fiable qui arrive et part, sur un ou plus
 Application web (SaaS) en français :
 - Un administrateur enregistre un téléphone Android comme **pointeuse** d'un site (jeton secret). Sans ce jeton, aucun pointage.
 - L'administrateur enrôle le **visage** de chaque employé en sa présence.
-- L'employé choisit Entrée ou Sortie, tape son **matricule**, regarde la caméra : contrôles de vivacité sur le téléphone, comparaison 1:1 décidée par le serveur, photo conservée. PIN de secours après 3 échecs. Fonctionne **hors ligne** avec synchronisation.
+- L'employé choisit Entrée ou Sortie, tape son **PIN**, regarde la caméra : contrôles de vivacité sur le téléphone, comparaison 1:1 décidée par le serveur, photo conservée. validation sans visage après 3 échecs. Fonctionne **hors ligne** avec synchronisation.
 - L'administrateur contrôle les pointages (photo captée à côté de la photo de référence, scores), traite les pointages à vérifier/suspects, et dispose d'un journal d'audit et d'un écran de diagnostic pour régler les seuils.
 - Pas d'autres modules RH.
 
@@ -27,23 +27,23 @@ Pointeuse
 6. As an employé, I want un message clair si je suis sur un téléphone non enregistré, so that je sache où pointer.
 
 Enrôlement du visage
-7. As an administrateur, I want ajouter un employé avec son nom et un matricule numérique, so that il puisse être enrôlé.
+7. As an administrateur, I want ajouter un employé avec son nom, so that il puisse être enrôlé.
 8. As an administrateur, I want capturer 3 à 5 images du visage (face, légère rotation gauche/droite) en présence de l'employé, so that le profil soit robuste.
 9. As an administrateur, I want un contrôle de qualité à chaque capture (un seul visage, taille suffisante, éclairage correct, netteté), so that les mauvaises captures soient refusées.
 10. As an administrateur, I want que la cohérence entre les captures soit vérifiée, so that deux personnes différentes ne finissent pas dans le même profil.
 11. As an administrateur, I want enregistrer une photo de référence, so that je puisse comparer visuellement plus tard.
-12. As an employé, I want choisir moi-même mon PIN à 4 chiffres à l'enrôlement, so that personne d'autre ne le connaisse.
+12. As an employé, I want recevoir à l'enrôlement un PIN à 4 chiffres, montré une seule fois, so that je m'identifie sans matricule.
 13. As an administrateur, I want confirmer que l'employé a été informé et consent, so that la collecte soit tracée.
 14. As an administrateur, I want ré-enrôler ou supprimer un profil facial, so that je corrige une erreur ou respecte une demande de suppression.
 15. As an administrateur, I want que les données biométriques soient chiffrées et jamais visibles d'un autre employé, so that la confidentialité soit respectée.
 
 Pointage
 16. As an employé, I want choisir Entrée ou Sortie, so that mon intention soit explicite.
-17. As an employé, I want taper mon matricule sur un grand clavier numérique, so that le pointage soit rapide.
+17. As an employé, I want taper mon PIN sur un grand clavier numérique (saisie masquée), so that le pointage soit rapide.
 18. As an employé, I want regarder la caméra frontale avec un retour visuel clair (cadre, consignes), so that je sache quoi faire.
 19. As an opérateur, I want que seule la caméra en direct soit utilisable (aucun fichier ni galerie), so that une photo ne soit pas présentée.
 20. As an opérateur, I want exiger un seul visage, une taille minimale, le regard vers la caméra, un clignement, et les modules liveness et antispoof, so that les usurpations simples échouent.
-21. As an opérateur, I want que le visage capté soit comparé uniquement au profil du matricule saisi, so that on ne cherche pas dans toute la base.
+21. As an opérateur, I want que le visage capté soit comparé uniquement au profil de l'employé identifié par le PIN saisi, so that on ne cherche pas dans toute la base.
 22. As an opérateur, I want que la décision d'acceptation soit prise par le serveur, so that le navigateur ne décide pas.
 23. As an administrateur, I want régler les seuils de similarité, liveness et antispoof sans redéploiement, so that j'ajuste sur le terrain.
 24. As an opérateur, I want conserver une photo (~480 px, < 50 Ko) et les scores de chaque tentative, réussie ou non, so that tout soit auditable.
@@ -53,10 +53,10 @@ Pointage
 28. As an employé, I want une confirmation avec mon nom, le type et l'heure locale, so that je sache que c'est enregistré.
 
 Secours PIN
-29. As an employé, I want pouvoir utiliser mon PIN après 3 échecs de reconnaissance, so that je ne sois pas bloqué par un mauvais éclairage.
+29. As an employé, I want pouvoir valider sans visage après 3 échecs de reconnaissance (mon PIN m'a déjà identifié), so that je ne sois pas bloqué par un mauvais éclairage.
 30. As an administrateur, I want que ces pointages soient marqués « à vérifier » avec photo obligatoire, so that je les contrôle.
-31. As an opérateur, I want un blocage temporaire après 5 PIN erronés, so that le PIN ne se devine pas.
-32. As an administrateur, I want réinitialiser le PIN et débloquer un employé, so that je dépanne rapidement.
+31. As an opérateur, I want un blocage temporaire de la pointeuse après 5 PIN inconnus consécutifs, so that le PIN ne se devine pas par essais.
+32. As an administrateur, I want régénérer le PIN d'un employé (nouveau PIN affiché une fois), so that je dépanne en cas d'oubli ou de PIN connu d'un tiers.
 
 Hors ligne
 33. As an employé, I want pointer même sans réseau, so that une coupure ne bloque pas l'équipe.
@@ -93,7 +93,7 @@ Comptes
 
 - ADR-0001 stack ; ADR-0002 reconnaissance faciale 1:1 avec Human, décision serveur ; ADR-0003 pointeuses ; ADR-0004 hors ligne ; ADR-0005 données biométriques. Détails dans le LLD.
 - Un seul rôle « administrateur » (= RH). Super-administrateur pour les organisations. Les employés n'ont pas de compte.
-- Matricule : 3 à 10 chiffres. Le type Entrée/Sortie est choisi par l'employé ; le serveur refuse les séquences incohérentes ; une Entrée est de nouveau permise si la dernière Entrée dépasse le seuil de sortie manquante.
+- Identification par PIN (4 chiffres, unique par organisation, généré par le système, stocké en HMAC), sans matricule. Le type Entrée/Sortie est choisi par l'employé ; le serveur refuse les séquences incohérentes ; une Entrée est de nouveau permise si la dernière Entrée dépasse le seuil de sortie manquante.
 - Comparaison 1:1 ; similarité = max sur les descripteurs du profil ; seuils par organisation.
 - Le seam de test principal est `FaceEngine` (double scripté) côté client et les endpoints API côté serveur.
 
@@ -109,5 +109,6 @@ Géolocalisation, reconnaissance 1:N, empreinte digitale/WebAuthn, application n
 
 ## Further Notes
 
+- **Risque du PIN-identifiant** : voir ADR-0002 (observation/partage du PIN, 10 000 valeurs max par organisation, blocage de la pointeuse plutôt que du compte).
 - Lettre F absente dans le brief initial (A, B, C, D, E, G) : à confirmer si une section manque.
-- Hypothèses prises par défaut, à valider : plusieurs pointeuses par organisation ; administrateur = RH ; photos et descripteurs en Postgres chiffré (pas de Supabase Storage, qui exigerait une clé de service supplémentaire) ; PIN choisi par l'employé ; matricule numérique ; rétention des photos de tentative 90 jours ; PIN indisponible hors ligne ; heure d'un pointage hors ligne = heure de l'appareil, signalée si douteuse ; « annulation » = rejet par l'administrateur (pas d'édition d'heure).
+- Hypothèses prises par défaut, à valider : plusieurs pointeuses par organisation ; administrateur = RH ; photos et descripteurs en Postgres chiffré (pas de Supabase Storage, qui exigerait une clé de service supplémentaire) ; PIN généré par le système et unique par organisation ; rétention des photos de tentative 90 jours ; secours sans visage indisponible hors ligne ; heure d'un pointage hors ligne = heure de l'appareil, signalée si douteuse ; « annulation » = rejet par l'administrateur (pas d'édition d'heure).

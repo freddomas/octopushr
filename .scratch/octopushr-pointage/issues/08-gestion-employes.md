@@ -5,11 +5,11 @@
 **Type:** afk
 **Lire uniquement :** spec.md stories 7, 51, lld.md §2 (employees), §10 (+ `GLOSSARY.md`, `CLAUDE.md`)
 
-**/goal :** Un admin de fixture crée un employé (matricule numérique), le voit « Visage à enrôler », le désactive puis le réactive ; un admin d'une autre organisation ne le voit jamais (tests verts).
+**/goal :** Un admin de fixture crée un employé (nom seul), le voit « Visage à enrôler », le désactive puis le réactive ; un admin d'une autre organisation ne le voit jamais (tests verts).
 
-**What to build:** page `/admin/employes` : tableau (nom, matricule, statut Visage à enrôler / Actif / Désactivé, PIN défini oui/non, date), recherche, création (nom complet, matricule 3–10 chiffres unique dans l'organisation), désactivation/réactivation (ne supprime rien). Toutes les opérations passent par `src/server/data` avec `Scope` org.
+**What to build:** page `/admin/employes` : tableau (nom, statut Visage à enrôler / Actif / Désactivé, date), recherche par nom, création (nom complet uniquement ; le PIN est généré à l'enrôlement du visage, pas de matricule), désactivation/réactivation (ne supprime rien). Toutes les opérations passent par `src/server/data` avec `Scope` org.
 
-- [ ] Création validée (zod) ; matricule non numérique, trop court/long ou dupliqué ⇒ erreur claire
+- [ ] Création validée (zod) ; nom vide ou trop long ⇒ erreur claire (deux employés peuvent porter le même nom)
 - [ ] Statut `pending_face` à la création
 - [ ] Désactiver/réactiver conserve l'historique de pointages
 - [ ] Test d'isolation : l'admin de l'org B ne peut ni lister, ni lire, ni modifier un employé de l'org A (404)
