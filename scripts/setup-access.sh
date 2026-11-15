@@ -217,9 +217,9 @@ ask WEBAUTHN_RP_ID "Domaine de production (sans https://) :"
 write_env WEBAUTHN_RP_ID "$WEBAUTHN_RP_ID"
 write_env WEBAUTHN_ORIGIN "https://$WEBAUTHN_RP_ID"
 write_env APP_URL "https://$WEBAUTHN_RP_ID"
-note "Fuseau horaire IANA par défaut des organisations (ex. Indian/Mauritius, Indian/Reunion, Europe/Paris)."
+note "Fuseau horaire IANA par défaut des organisations (ex. Africa/Kinshasa, Africa/Lubumbashi)."
 ask DEFAULT_TIMEZONE "Fuseau horaire par défaut :"
-write_env DEFAULT_TIMEZONE "${DEFAULT_TIMEZONE:-Indian/Mauritius}"
+write_env DEFAULT_TIMEZONE "${DEFAULT_TIMEZONE:-Africa/Kinshasa}"
 
 # ── 2. GitHub ─────────────────────────────────────────────────────────────
 stage "GitHub : jeton limité au dépôt octopushr"

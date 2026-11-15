@@ -9,8 +9,8 @@ Les organisations n'ont pas de moyen simple et fiable de savoir quand leurs empl
 ## Solution
 
 Une application web (SaaS, installable en raccourci d'écran d'accueil mais sans APK) :
-- L'**employé** ouvre la page de pointage dans Chrome Android, touche « Pointer », valide avec son empreinte ; le serveur enregistre automatiquement une Entrée ou une Sortie avec sa propre horloge.
-- L'**administrateur** se connecte avec identifiant + mot de passe, gère ses employés (création, lien d'enrôlement, désactivation, réinitialisation d'appareil) et consulte le tableau des pointages de toute son organisation (filtres, durées, export CSV).
+- L'**employé** utilise le smartphone Android unique de son organisation (« l'appareil »), ouvre la page de pointage dans Chrome, touche « Pointer », valide avec l'empreinte ; le serveur enregistre automatiquement une Entrée ou une Sortie avec sa propre horloge.
+- L'**administrateur** se connecte avec identifiant + mot de passe, gère ses employés (création, lien d'enrôlement, désactivation, réinitialisation d'empreinte, activation de l'appareil, seuil de Sortie manquante) et consulte le tableau des pointages de toute son organisation (filtres, durées, export CSV).
 - Le **super-administrateur** crée les organisations et leur premier administrateur.
 - Aucun autre module RH (congés, paie, planning…).
 
@@ -18,7 +18,7 @@ Une application web (SaaS, installable en raccourci d'écran d'accueil mais sans
 
 Employé
 1. As an employé, I want ouvrir un lien d'enrôlement sur mon téléphone, so that je lie mon empreinte à mon compte sans mot de passe.
-2. As an employé, I want que l'enrôlement exige la vérification de mon empreinte, so that personne d'autre ne puisse enregistrer mon appareil.
+2. As an employé, I want que l'enrôlement exige la vérification de mon empreinte, so that personne d'autre ne puisse enregistrer mon empreinte.
 3. As an employé, I want un lien d'enrôlement à usage unique qui expire, so that un lien volé ne soit pas exploitable.
 4. As an employé, I want toucher un seul bouton « Pointer » puis valider mon empreinte, so that pointer prenne quelques secondes.
 5. As an employé, I want ne pas saisir d'identifiant ni de mot de passe, so that il n'y ait rien à oublier.
@@ -41,7 +41,7 @@ Administrateur
 20. As an administrateur, I want générer un lien d'enrôlement et un QR code pour un employé, so that je le lui transmette facilement.
 21. As an administrateur, I want voir qui est enrôlé, en attente d'enrôlement ou désactivé, so that je pilote le déploiement.
 22. As an administrateur, I want désactiver et réactiver un employé, so that un départ n'efface pas son historique.
-23. As an administrateur, I want réinitialiser l'appareil d'un employé, so that un téléphone perdu ne puisse plus pointer.
+23. As an administrateur, I want réinitialiser l'empreinte enregistrée d'un employé, so that un employé qui change de situation ou dont l'empreinte est compromise puisse la ré-enregistrer.
 24. As an administrateur, I want un tableau de tous les pointages de mon organisation, so that je supervise les présences.
 25. As an administrateur, I want filtrer par période, employé et type, so that je retrouve une information vite.
 26. As an administrateur, I want voir les heures dans le fuseau de mon organisation, so that les données correspondent à la réalité locale.
@@ -63,13 +63,22 @@ Plateforme
 38. As an opérateur, I want une application avec le logo du Manoir OCTOPUS et la direction artistique d'openhr, so that l'identité soit cohérente.
 39. As an opérateur, I want une application déployée en production sur Vercel avec migrations appliquées, so that la livraison soit reproductible.
 
+Appareil et paramètres
+40. As an administrateur, I want activer le smartphone de mon organisation avec un code à usage unique, so that seul cet appareil serve au pointage.
+41. As an administrateur, I want remplacer l'appareil (nouveau smartphone) en révoquant l'ancien, so that un téléphone perdu ne puisse plus pointer.
+42. As an employé, I want un message clair si j'essaie de pointer depuis un autre téléphone, so that je sache où aller pointer.
+43. As an administrateur, I want modifier le seuil de Sortie manquante de mon organisation (1 à 48 h), so that la règle corresponde à nos horaires.
+44. As an administrateur, I want que ce seuil s'applique au pointage, au tableau et au tableau de bord, so that les chiffres soient cohérents.
+45. As an opérateur, I want que le pointage soit impossible hors de l'appareil activé, même si une passkey est synchronisée ailleurs, so that la règle « un seul appareil » soit réelle.
+
 ## Implementation Decisions
 
 - Stack, rôle de Supabase, isolation par organisation : ADR-0001. Authentification employé : ADR-0002.
 - Trois rôles : super-administrateur et administrateur (mot de passe), employé (empreinte seule).
 - Multi-organisations dès le départ ; création par le super-administrateur uniquement (pas d'inscription publique).
-- Fuseau horaire IANA par organisation ; stockage UTC ; interface en français.
-- Pointage : alternance stricte Entrée/Sortie déterminée par le serveur ; règle de la Sortie manquante à 16 h ; anti double-appui par fenêtre de 10 s ; heure serveur uniquement.
+- Fuseau horaire IANA par organisation, défaut `Africa/Kinshasa` ; stockage UTC ; interface en français.
+- Un seul appareil (smartphone) par organisation pour le pointage et l'enrôlement (ADR-0004) ; l'espace admin reste accessible partout.
+- Pointage : alternance stricte Entrée/Sortie déterminée par le serveur ; seuil de Sortie manquante propre à l'organisation (16 h par défaut, modifiable par l'administrateur, 1–48 h) ; anti double-appui par fenêtre de 10 s ; heure serveur uniquement.
 - Anti-fraude : empreinte seule (pas de géolocalisation) — arbitrage utilisateur.
 - Lecture seule du tableau des pointages : aucune correction manuelle (hors périmètre).
 - Direction artistique : AdminLTE-like inspirée de openhr/openhr, logo Manoir OCTOPUS (`docs/assets/logo-octopus-manoir.png`).
@@ -84,7 +93,7 @@ Plateforme
 
 ## Out of Scope
 
-Congés, paie, planning, corrections de pointage, application native/APK, géolocalisation/géofence, inscription publique d'organisations, mot de passe/PIN de secours pour employés, mode hors-ligne, notifications, rapports avancés, multi-langue, SSO, historique côté employé au-delà du jour courant.
+Pointage depuis plusieurs appareils d'une même organisation, identification de la personne au-delà de l'empreinte du système (ADR-0004), congés, paie, planning, corrections de pointage, application native/APK, géolocalisation/géofence, inscription publique d'organisations, mot de passe/PIN de secours pour employés, mode hors-ligne, notifications, rapports avancés, multi-langue, SSO, historique côté employé au-delà du jour courant.
 
 ## Further Notes
 

@@ -10,6 +10,7 @@
 **What to build:** accueil `/admin` : quatre tuiles `SmallBox` (Présents maintenant = vert, Pointages aujourd'hui = bleu, Employés actifs = cyan, Sorties manquantes = jaune) comme dans la direction artistique d'openhr, + carte « Derniers pointages » (10 lignes). « Plus d'infos » renvoie vers `/admin/pointages` ou `/admin/employes` préfiltrés. « Aujourd'hui » = jour dans le fuseau de l'organisation.
 
 - [ ] Valeurs exactes vs fixtures ; bornes de jour dans le fuseau de l'organisation
+- [ ] « Sorties manquantes » utilise le seuil de l'organisation
 - [ ] Scope org strict (test d'isolation)
 - [ ] Liens préfiltrés fonctionnels
 - [ ] États chargement/erreur gérés ; responsive 375 px

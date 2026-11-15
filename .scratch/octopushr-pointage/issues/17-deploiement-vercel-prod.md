@@ -12,6 +12,6 @@
 - [ ] `/api/health` 200 en production ; HTTPS ; en-têtes présents
 - [ ] Migrations appliquées sur la base de production ; RLS vérifié actif
 - [ ] Super-admin amorcé ; variables de seed retirées de Vercel
-- [ ] Organisation de démonstration prête ; lien d'enrôlement de test généré pour l'utilisateur
-- [ ] Message final : lien Vercel, identifiants admin de test (transmis hors dépôt), procédure sur Android (ouvrir le lien d'enrôlement, enregistrer l'empreinte, ouvrir /pointer)
+- [ ] Organisation de démonstration prête (fuseau Africa/Kinshasa) ; code d'activation de l'appareil + lien d'enrôlement de test générés pour l'utilisateur
+- [ ] Message final : lien Vercel, identifiants admin de test (transmis hors dépôt), procédure sur Android (ouvrir le code d'activation sur le smartphone de l'organisation, ouvrir le lien d'enrôlement, enregistrer l'empreinte, ouvrir /pointer)
 - [ ] Rappel : la biométrie réelle doit être testée par l'utilisateur sur son téléphone

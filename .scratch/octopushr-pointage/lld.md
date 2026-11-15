@@ -16,16 +16,18 @@ Complète [spec.md](./spec.md). Vocabulaire : `GLOSSARY.md`. Décisions : `docs/
 
 Identifiants `uuid` (`gen_random_uuid()`), horodatages `timestamptz` UTC.
 
-- `organizations`: id, name, slug (unique), timezone (IANA, défaut `Indian/Mauritius` modifiable à la création — défaut confirmé par l'utilisateur avant le ticket 06), active (bool), created_at.
+- `organizations`: id, name, slug (unique), timezone (IANA, défaut `Africa/Kinshasa`), missing_exit_after_hours (int, défaut 16, CHECK entre 1 et 48, modifiable par l'administrateur), active (bool), created_at.
 - `admins`: id, org_id (null ⇔ super-administrateur ; FK), role (`super`|`admin`), username (unique global, minuscule), password_hash (argon2id), active, failed_attempts, locked_until, created_at. CHECK : `role='super'` ⇔ `org_id is null`.
-- `employees`: id, org_id, full_name, employee_code (unique par org), status (`pending`|`active`|`disabled`), created_at. `pending` = pas encore d'appareil.
+- `employees`: id, org_id, full_name, employee_code (unique par org), status (`pending`|`active`|`disabled`), created_at. `pending` = pas encore d'empreinte enregistrée.
 - `enrollment_tokens`: id, employee_id, token_hash (sha256, unique), expires_at (+48 h), used_at, created_at. Le jeton clair (32 octets base64url) n'est jamais stocké.
 - `webauthn_credentials`: id, employee_id, credential_id (base64url, unique), public_key (bytea), counter (bigint), transports (text[]), created_at, revoked_at. Au plus 1 non révoqué par employé (index unique partiel).
 - `webauthn_challenges`: id, challenge (unique), purpose (`enroll`|`punch`), employee_id (null pour `punch`), expires_at (+5 min), consumed_at.
-- `punches`: id, org_id, employee_id, type (`in`|`out`), punched_at (défaut `now()` serveur), credential_id (FK), user_agent. Index (org_id, punched_at desc), (employee_id, punched_at desc).
+- `kiosk_devices`: id, org_id, token_hash (sha256, unique), label, activated_at, revoked_at. Index unique partiel : 1 appareil non révoqué par organisation.
+- `device_activation_codes`: id, org_id, code_hash (sha256, unique), expires_at (+15 min), used_at, created_at.
+- `punches`: id, org_id, employee_id, type (`in`|`out`), punched_at (défaut `now()` serveur), credential_id (FK), kiosk_device_id (FK), user_agent. Index (org_id, punched_at desc), (employee_id, punched_at desc).
 - `rate_limits`: key (text, pk), window_start, count. Utilisé pour login admin, challenges, enrôlement.
 
-Invariants : un employé `disabled`/`pending` ne peut pas pointer ; une organisation `active=false` bloque connexions admin et pointages de ses employés.
+Invariants : un pointage n'est accepté que depuis l'appareil actif de l'organisation (§5bis) ; un employé `disabled`/`pending` ne peut pas pointer ; une organisation `active=false` bloque connexions admin et pointages de ses employés.
 
 ## §3 Authentification administrateur / super-administrateur
 
@@ -39,20 +41,29 @@ Invariants : un employé `disabled`/`pending` ne peut pas pointer ; une organisa
 ## §4 Enrôlement employé (WebAuthn registration)
 
 1. Admin : `POST /api/admin/employees/:id/enrollment-link` → crée un `enrollment_tokens` (invalide les précédents non utilisés), retourne `{ url: <APP_URL>/enroll/<token>, expiresAt }`. UI affiche le lien + QR code (côté client).
-2. Employé ouvre `/enroll/[token]` (page publique, token vérifié par hash, non expiré, non utilisé, employé non `disabled`, organisation active). Affiche nom de l'employé + bouton « Enregistrer mon empreinte ».
+2. Le lien est ouvert **sur l'appareil de l'organisation** (§5bis ; sinon écran « appareil non autorisé »). `/enroll/[token]` (page publique + cookie d'appareil, token vérifié par hash, non expiré, non utilisé, employé non `disabled`, organisation active). Affiche nom de l'employé + bouton « Enregistrer mon empreinte ».
 3. `POST /api/enroll/options` {token} → options de création (`rpID=WEBAUTHN_RP_ID`, user.id = employee_id, `authenticatorSelection: { authenticatorAttachment: "platform", residentKey: "required", userVerification: "required" }`, `attestation: "none"`), défi stocké (`enroll`, lié à l'employé).
 4. `POST /api/enroll/verify` {token, response} → vérifie défi (consommation atomique), origine (`WEBAUTHN_ORIGIN`), `userVerified=true` ; insère `webauthn_credentials`, marque le token `used_at`, passe l'employé en `active`. Transaction unique.
-5. Erreurs gérées : jeton invalide/expiré/utilisé, appareil sans biométrie (message dédié), annulation utilisateur, navigateur non compatible.
+5. Erreurs gérées : jeton invalide/expiré/utilisé, téléphone sans biométrie configurée (message dédié), appareil non autorisé, annulation utilisateur, navigateur non compatible.
 
 ## §5 Pointage (WebAuthn authentication)
 
-1. `/pointer` (page publique, optimisée mobile, logo, gros bouton « Pointer »).
+1. `/pointer` (page publique réservée à l'appareil activé §5bis, optimisée mobile, logo, gros bouton « Pointer »).
 2. `POST /api/punch/options` → options d'authentification **sans allowCredentials** (credential découvrable), `userVerification: "required"`, défi `punch` stocké. Rate limit par IP.
 3. `POST /api/punch/verify` {response} → retrouve le credential par `credential_id` (non révoqué), employé `active`, org `active` ; vérifie défi (consommé atomiquement), origine, RP ID, signature, `userVerified`, compteur strictement croissant (si l'authentificateur renvoie 0 de façon constante, tolérer 0→0 comme le permet la spec) ; met à jour le compteur.
-4. Type du pointage (calculé côté serveur dans la même transaction, verrou sur l'employé) : dernier pointage de l'employé = `in` et plus récent que 16 h ⇒ `out` ; sinon ⇒ `in`. Si dernier = `in` et ≥ 16 h ⇒ nouvelle `in` (la précédente est une Sortie manquante).
+4. Type du pointage (calculé côté serveur dans la même transaction, verrou sur l'employé) : soit N = `organizations.missing_exit_after_hours` (16 par défaut, modifiable). Dernier pointage de l'employé = `in` et plus récent que N heures ⇒ `out` ; sinon ⇒ `in`. Si dernier = `in` et ≥ N heures ⇒ nouvelle `in` (la précédente est une Sortie manquante). N est relu à chaque pointage ; le changer ne réécrit pas l'historique.
 5. Anti double-appui : si un pointage du même employé existe depuis < 10 s, ne pas en créer ; renvoyer le pointage existant avec `duplicate: true`.
 6. Réponse : `{ employeeName, type, punchedAt (ISO UTC), orgTimezone, today: [{type, punchedAt}] }`. L'écran affiche en heure locale de l'organisation (`Intl.DateTimeFormat`).
 7. Heure : uniquement `now()` serveur.
+
+## §5bis Appareil unique par organisation (ADR-0004)
+
+- Au plus un appareil actif par organisation. `/pointer`, `/enroll/*`, `POST /api/punch/*`, `POST /api/enroll/*` exigent le cookie `__Host-octo_device` ; l'espace admin n'est pas concerné.
+- Activation : `/admin/appareil` → `POST /api/admin/device/activation-code` (8 caractères + QR, 15 min, usage unique, haché). Sur le smartphone : `/activate` (saisie ou scan du code) → `POST /api/device/activate` : jeton aléatoire 32 octets, hash dans `kiosk_devices`, cookie `__Host-octo_device` (HttpOnly; Secure; SameSite=Lax; Max-Age 1 an). Une nouvelle activation révoque l'appareil précédent (confirmation admin) ; les employés dont la passkey n'existe pas sur le nouveau téléphone sont réenrôlés (réinitialisation d'empreinte §4).
+- Chaque requête de pointage/enrôlement : cookie → hash → appareil non révoqué → organisation active ; l'organisation de l'employé/credential doit égaler celle de l'appareil, sinon 403 générique « Appareil non autorisé ».
+- Pourquoi un jeton en plus de WebAuthn : une passkey Android peut se synchroniser et servir sur un autre téléphone ; seul le jeton lie le pointage à l'appareil.
+- Limite connue : sur un appareil partagé, n'importe quelle empreinte du système déverrouille n'importe quelle passkey ; l'identité de la personne n'est pas prouvée (ADR-0004).
+- Paramètres de l'organisation éditables par l'administrateur (`/admin/parametres`) : `missing_exit_after_hours` (entier 1–48).
 
 ## §6 Interface (direction artistique)
 
@@ -60,7 +71,7 @@ Inspiration : openhr/openhr (AdminLTE 3). Tokens : barre latérale `#343a40`, en
 
 - Logo : `docs/assets/logo-octopus-manoir.png` (fond blanc ; produire variantes recadrée/carrée, favicon, icônes PWA 192/512). Dans la barre latérale sombre, placer le logo sur une pastille/bandeau blanc.
 - Page de connexion admin : carte centrée sur fond `#e9ecef`, logo au-dessus, champs identifiant/mot de passe avec icônes.
-- Layout admin : sidebar (Tableau de bord, Pointages, Employés ; super : Organisations), topbar (burger, nom utilisateur, Déconnexion), responsive (sidebar repliable < 992 px).
+- Layout admin : sidebar (Tableau de bord, Pointages, Employés, Appareil, Paramètres ; super : Organisations), topbar (burger, nom utilisateur, Déconnexion), responsive (sidebar repliable < 992 px).
 - `/pointer` et `/enroll/[token]` : plein écran mobile, sans sidebar, gros boutons (≥ 56 px), états : prêt, vérification, succès (vert), erreur (rouge).
 - `manifest.webmanifest` (nom « OctopusHR », `start_url=/pointer`, `display=standalone`) ; pas de service worker.
 - Tout le texte est en français ; états vides, chargement et erreurs soignés.
@@ -68,7 +79,7 @@ Inspiration : openhr/openhr (AdminLTE 3). Tokens : barre latérale `#343a40`, en
 ## §7 Sécurité (exigences transverses)
 
 - En-têtes : CSP stricte (pas d'inline hors nonce), HSTS, `X-Content-Type-Options`, `Referrer-Policy: same-origin`, `Permissions-Policy` (publickey-credentials-get/create autorisés pour self uniquement), `frame-ancestors 'none'`.
-- Rate limiting (§2 `rate_limits`) : login admin, `/api/punch/options`, `/api/enroll/*`.
+- Rate limiting (§2 `rate_limits`) : login admin, activation d'appareil, `/api/punch/options`, `/api/enroll/*`.
 - Jetons à usage unique hachés ; défis à usage unique, 5 min.
 - Pas de secrets dans le dépôt ni dans les logs ; pas de PII dans les logs.
 - Messages d'erreur d'authentification non énumérants.

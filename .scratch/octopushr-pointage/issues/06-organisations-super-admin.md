@@ -10,7 +10,7 @@
 **What to build:** page `/super/organisations` : liste (nom, fuseau, nb d'employés, statut), formulaire de création (nom, fuseau IANA, identifiant + mot de passe initial du premier administrateur), activer/désactiver. Une organisation désactivée empêche la connexion de ses administrateurs.
 
 - [ ] Création atomique organisation + premier administrateur ; slug unique généré
-- [ ] Fuseau validé contre la liste IANA ; défaut = valeur confirmée au ticket 01
+- [ ] Fuseau validé contre la liste IANA ; défaut `Africa/Kinshasa`
 - [ ] Identifiant admin unique globalement (erreur claire) ; mot de passe ≥ 12 caractères
 - [ ] Organisation désactivée ⇒ admins refusés (session existante rejetée à la requête suivante)
 - [ ] Accessible uniquement au super-admin (un admin reçoit 403)
