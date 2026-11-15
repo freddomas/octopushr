@@ -4,18 +4,21 @@ Utiliser ces termes exacts dans le code, les tickets et l'UI (en français).
 
 | Terme | Définition | À éviter |
 | --- | --- | --- |
-| **Organisation** | Tenant. Regroupe des administrateurs, des employés et leurs pointages. Porte un fuseau horaire IANA. | entreprise, société, compte |
+| **Organisation** | Tenant. Regroupe administrateurs, employés, pointeuses et pointages. Porte un fuseau horaire IANA (défaut `Africa/Kinshasa`) et ses paramètres. | entreprise, société, compte |
 | **Super-administrateur** | Opérateur de la plateforme. Crée les organisations et leur premier administrateur. Identifiant + mot de passe. N'appartient à aucune organisation. | root |
-| **Administrateur** | Compte d'une organisation. Consulte les pointages et gère les employés de SON organisation uniquement. Identifiant + mot de passe. | manager, RH |
-| **Employé** | Personne qui pointe. Aucun mot de passe : seule une empreinte enregistrée sur l'appareil de l'organisation l'authentifie. | utilisateur, salarié |
-| **Matricule** | Identifiant libre de l'employé, unique dans l'organisation. | |
-| **Appareil** | Le smartphone Android unique d'une organisation, activé par l'administrateur, sur lequel tourne la plateforme de pointage. Une organisation n'a qu'un appareil actif ; tout pointage depuis un autre appareil est refusé. L'espace administrateur reste accessible depuis n'importe quel navigateur. | borne, kiosque, téléphone de l'employé |
-| **Empreinte enregistrée** | Passkey WebAuthn de plateforme créée par un employé sur l'appareil de l'organisation (déverrouillée par l'empreinte du système Android). Un employé actif en a au plus une. | credential, clé, appareil de l'employé |
-| **Activation de l'appareil** | Action admin : génère un code à usage unique (15 min) à saisir/scanner sur le smartphone à activer ; l'ancien appareil est révoqué. | |
-| **Seuil de sortie manquante** | Paramètre de l'organisation (16 h par défaut, 1–48 h) modifiable par l'administrateur. | |
-| **Lien d'enrôlement** | URL à usage unique (valide 48 h) générée par l'administrateur ; ouvert sur l'appareil de l'organisation pour enregistrer l'empreinte de l'employé. | invitation |
-| **Pointage** | Enregistrement horodaté côté serveur (UTC) d'une **Entrée** ou d'une **Sortie** d'un employé, validé par une vérification biométrique. | check-in, badge |
-| **Entrée / Sortie** | Les deux types de pointage. Alternent strictement par employé. | |
-| **Session ouverte** | Entrée sans Sortie correspondante. | |
-| **Sortie manquante** | Session ouverte depuis plus longtemps que le seuil de l'organisation : considérée abandonnée ; le pointage suivant est une nouvelle Entrée. | |
-| **Réinitialisation d'empreinte** | Action admin : révoque l'empreinte enregistrée de l'employé et génère un nouveau lien d'enrôlement. | |
+| **Administrateur** | Compte d'une organisation (identifiant + mot de passe). Il joue aussi le rôle de « RH » : gère les employés, enrôle les visages, enregistre les pointeuses, revoit les pointages. Ne voit que SON organisation. | manager, RH (rôle distinct : il n'y en a pas) |
+| **Employé** | Personne qui pointe. Identifié par son **matricule** et son visage. Pas de mot de passe. | utilisateur, salarié |
+| **Matricule** | Numéro de l'employé : 3 à 10 chiffres, unique dans l'organisation (saisi au clavier numérique). | identifiant, code |
+| **Pointeuse** | Téléphone Android enregistré par un administrateur pour un **site** ; détient un jeton secret d'appareil. Seul lieu où l'on peut pointer. Plusieurs par organisation possibles. | borne, kiosque, appareil |
+| **Site** | Nom libre du lieu d'une pointeuse (ex. « Siège Gombe »). Pas d'entité propre. | |
+| **Profil facial** | 3 à 5 descripteurs + photo de référence d'un employé, chiffrés, créés par l'administrateur en présence de l'employé. | template, gabarit |
+| **Descripteur** | Vecteur de 1024 nombres calculé par Human sur un visage. | empreinte (confusion avec digitale) |
+| **Pointage** | Enregistrement d'une **Entrée** ou d'une **Sortie** avec photo, scores, méthode, statut. | check-in, badge |
+| **Tentative refusée** | Pointage de statut `refusé` : conservé (photo + scores) mais non compté. | échec |
+| **Méthode** | `visage` ou `PIN`. | |
+| **Statut** | `ok`, `à vérifier` (PIN de secours), `suspect` (comparaison échouée à la synchronisation, séquence incohérente, heure douteuse), `validé` / `rejeté` (décision admin), `refusé`. | |
+| **Sous réserve** | Pointage hors ligne accepté provisoirement, en attente de comparaison par le serveur. | |
+| **PIN de secours** | Code à 4 chiffres de l'employé, haché, utilisable après 3 échecs de reconnaissance. | mot de passe |
+| **Sortie manquante** | Entrée sans Sortie depuis plus longtemps que le seuil de l'organisation (16 h par défaut) ; une nouvelle Entrée est alors autorisée. | |
+| **Seuils** | Paramètres de l'organisation : similarité, liveness, antispoof, sortie manquante, rétention des photos, etc. Modifiables sans redéploiement. | |
+| **Diagnostic** | Écran administrateur qui affiche en direct les scores pour régler les seuils. | |

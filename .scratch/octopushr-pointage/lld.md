@@ -1,97 +1,130 @@
-# LLD — OctopusHR pointage
+# LLD — OctopusHR pointage par reconnaissance faciale
 
-Complète [spec.md](./spec.md). Vocabulaire : `GLOSSARY.md`. Décisions : `docs/adr/`. Les tickets citent les sections par leur numéro (§).
+Complète [spec.md](./spec.md). Vocabulaire : `GLOSSARY.md`. Décisions : `docs/adr/`. Recherche Human : `docs/research/human-face-recognition.md`. Les tickets citent les sections par leur numéro (§).
 
 ## §1 Architecture
 
-- Next.js (App Router, TypeScript strict, Node runtime, pas d'Edge pour les routes DB/WebAuthn), Tailwind CSS, composants maison inspirés AdminLTE (§6).
-- Accès données : Drizzle ORM + `postgres` (driver) sur `DATABASE_URL` (pooler Supabase, mode transaction ⇒ pas de requêtes préparées). Migrations SQL générées par drizzle-kit, versionnées dans `drizzle/`.
-- Couche d'accès unique `src/server/data/*` : **toute** fonction reçoit un `Scope` (`{ kind: "super" } | { kind: "org", orgId }`) et filtre par `org_id`. Aucune requête SQL hors de cette couche.
-- Validation : zod sur toute entrée (route handlers / server actions). Réponses d'erreur JSON `{ error: { code, message } }`, messages en français.
-- Tests : Vitest (unit + intégration sur Postgres de test), Playwright (E2E, authentificateur virtuel WebAuthn, émulation Pixel 7).
-- Mise en page de dossiers (convention) : `src/app/(public)`, `src/app/(admin)/admin`, `src/app/(super)/super`, `src/app/pointer`, `src/app/enroll/[token]`, `src/app/api/*`, `src/server/{db,data,auth,webauthn}`, `src/components/ui`, `src/lib`.
-- Pas de Supabase Auth, pas de client Supabase navigateur (ADR-0001). `NEXT_PUBLIC_SUPABASE_*` restent définies mais inutilisées.
+- Next.js (App Router, TypeScript strict, runtime Node pour toutes les routes DB), Tailwind, composants maison AdminLTE-like (§10). Déploiement Vercel (ADR-0001).
+- Accès données : Drizzle ORM + `postgres` sur `DATABASE_URL` (pooler, pas de requêtes préparées). Migrations versionnées dans `drizzle/`. Couche unique `src/server/data/*` ; toute fonction reçoit un `Scope` (`{kind:"super"} | {kind:"org", orgId}`) et filtre par `org_id`.
+- Validation zod de toute entrée. Erreurs JSON `{ error: { code, message } }`, messages en français.
+- Client de pointage : `src/client/face/` avec l'interface **`FaceEngine`** (`load()`, `analyze(videoFrame) → FaceAnalysis`, `capture()`), implémentation `HumanEngine` (Human 3.3.6) et `ScriptedEngine` pour les tests (seam principal).
+- Modèles : `public/models/` (versionnés dans le dépôt ou téléchargés par un script `npm run models:fetch` depuis `vladmandic/human-models` avec contrôle d'intégrité ; aucun CDN à l'exécution). Service worker (`public/sw.js`, cache versionné) précache coque d'appli + modèles utiles (blazeface, facemesh, iris, faceres, antispoof, liveness).
+- Tests : Vitest (unit + intégration sur Postgres de test), Playwright (E2E, émulation Pixel 7, moteur simulé).
+- Dossiers : `src/app/(public)`, `src/app/(admin)/admin`, `src/app/(super)/super`, `src/app/pointer`, `src/app/api/*`, `src/server/{db,data,auth,crypto,face}`, `src/client/{face,offline}`, `src/components/ui`, `src/lib`.
 
-## §2 Modèle de données (Postgres, toutes les tables : RLS activé, aucune policy)
+## §2 Modèle de données (Postgres ; RLS activé sur toutes les tables, aucune policy)
 
-Identifiants `uuid` (`gen_random_uuid()`), horodatages `timestamptz` UTC.
+UUID `gen_random_uuid()` ; horodatages `timestamptz` UTC.
 
-- `organizations`: id, name, slug (unique), timezone (IANA, défaut `Africa/Kinshasa`), missing_exit_after_hours (int, défaut 16, CHECK entre 1 et 48, modifiable par l'administrateur), active (bool), created_at.
-- `admins`: id, org_id (null ⇔ super-administrateur ; FK), role (`super`|`admin`), username (unique global, minuscule), password_hash (argon2id), active, failed_attempts, locked_until, created_at. CHECK : `role='super'` ⇔ `org_id is null`.
-- `employees`: id, org_id, full_name, employee_code (unique par org), status (`pending`|`active`|`disabled`), created_at. `pending` = pas encore d'empreinte enregistrée.
-- `enrollment_tokens`: id, employee_id, token_hash (sha256, unique), expires_at (+48 h), used_at, created_at. Le jeton clair (32 octets base64url) n'est jamais stocké.
-- `webauthn_credentials`: id, employee_id, credential_id (base64url, unique), public_key (bytea), counter (bigint), transports (text[]), created_at, revoked_at. Au plus 1 non révoqué par employé (index unique partiel).
-- `webauthn_challenges`: id, challenge (unique), purpose (`enroll`|`punch`), employee_id (null pour `punch`), expires_at (+5 min), consumed_at.
-- `kiosk_devices`: id, org_id, token_hash (sha256, unique), label, activated_at, revoked_at. Index unique partiel : 1 appareil non révoqué par organisation.
-- `device_activation_codes`: id, org_id, code_hash (sha256, unique), expires_at (+15 min), used_at, created_at.
-- `punches`: id, org_id, employee_id, type (`in`|`out`), punched_at (défaut `now()` serveur), credential_id (FK), kiosk_device_id (FK), user_agent. Index (org_id, punched_at desc), (employee_id, punched_at desc).
-- `rate_limits`: key (text, pk), window_start, count. Utilisé pour login admin, challenges, enrôlement.
+- `organizations`: id, name, slug (unique), timezone (défaut `Africa/Kinshasa`), active, created_at.
+- `org_settings` (1:1, créée avec l'organisation) : `similarity_threshold` (0–1, défaut 0.5), `liveness_threshold` (défaut 0.6), `antispoof_threshold` (défaut 0.6), `min_face_size_px` (défaut 224), `face_failures_before_pin` (défaut 3), `pin_max_attempts` (défaut 5), `pin_lock_minutes` (défaut 15), `missing_exit_after_hours` (défaut 16, 1–48), `photo_retention_days` (défaut 90, 7–730), `challenge_enabled` (défaut false : défi aléatoire « tournez la tête »), `updated_at`.
+- `admins`: id, org_id (null ⇔ super), role (`super`|`admin`), username (unique), password_hash (argon2id), active, failed_attempts, locked_until, created_at.
+- `employees`: id, org_id, full_name, employee_code (chiffres, 3–10, unique par org), status (`pending_face`|`active`|`disabled`), pin_hash (null avant enrôlement), pin_failed_attempts, pin_locked_until, face_failures (compteur d'échecs consécutifs), consent_at, consent_admin_id, created_at.
+- `pointeuses`: id, org_id, site_name, token_hash (sha256, unique), registered_by_admin_id, registered_at, last_seen_at, revoked_at, user_agent.
+- `face_profiles`: id, employee_id, reference_photo_enc (bytea), key_version, enrolled_by_admin_id, enrolled_at, deleted_at. Unique partiel : 1 profil non supprimé par employé.
+- `face_templates`: id, profile_id, idx (0–4), descriptor_enc (bytea : 1024 float32 chiffrés), key_version.
+- `punches`: id (uuid, généré sur l'appareil = idempotence ; unique), org_id, employee_id (null si matricule inconnu), entered_code, pointeuse_id, type (`in`|`out`), method (`face`|`pin`), status (`ok`|`to_review`|`suspect`|`validated`|`rejected`|`refused`), reasons (text[]), similarity, liveness, antispoof (real), offline (bool), device_time, received_at (`now()` serveur), punched_at (heure effective), photo_enc (bytea), key_version, reviewed_by, reviewed_at, review_comment. Index (org_id, punched_at desc), (employee_id, punched_at desc), (org_id, status).
+- `audit_log`: id, org_id, admin_id, action, entity, entity_id, details (jsonb sans donnée biométrique), created_at.
+- `rate_limits`: key (pk), window_start, count.
 
-Invariants : un pointage n'est accepté que depuis l'appareil actif de l'organisation (§5bis) ; un employé `disabled`/`pending` ne peut pas pointer ; une organisation `active=false` bloque connexions admin et pointages de ses employés.
+Invariants : un pointage n'est accepté que depuis une pointeuse valide de l'organisation ; employé `disabled`/`pending_face` ne peut pas pointer ; organisation inactive bloque tout.
 
 ## §3 Authentification administrateur / super-administrateur
 
-- `POST /api/admin/login` {username, password} → argon2id (`@node-rs/argon2`) ; temps constant si utilisateur inconnu (hash factice).
-- Échecs : 5 consécutifs ⇒ `locked_until = now + 15 min` ; en plus, rate limit IP (10/10 min) via `rate_limits`. Message d'erreur identique pour inconnu/mauvais mot de passe.
-- Session : JWT HS256 (`jose`) dans cookie `__Host-octo_session` (`HttpOnly; Secure; SameSite=Lax; Path=/`), durée 8 h, claims `{ sub, role, orgId }`, secret `SESSION_SECRET` (≥ 32 octets). Le rôle/org sont **rechargés en base à chaque requête** (désactivation immédiate effective).
-- Middleware : `/admin/**` exige `role=admin`, `/super/**` exige `role=super`, sinon redirection `/login`. Les route handlers revérifient (défense en profondeur).
-- Amorçage super-administrateur : script `npm run seed:super` lit `SUPER_ADMIN_USERNAME` / `SUPER_ADMIN_PASSWORD` (≥ 12 caractères), idempotent, jamais exposé en HTTP.
-- CSRF : `SameSite=Lax` + vérification de l'en-tête `Origin` sur toute requête mutante.
+- `POST /api/admin/login` {username, password} : argon2id, temps constant si inconnu, 5 échecs ⇒ `locked_until` +15 min, rate limit IP (10 / 10 min), message générique.
+- Session JWT HS256 (`jose`) en cookie `__Host-octo_session` (HttpOnly; Secure; SameSite=Lax), 8 h, claims `{sub, role, orgId}` ; rôle/organisation **rechargés en base à chaque requête**. Secret `SESSION_SECRET` ≥ 32 octets.
+- Middleware : `/admin/**` ⇒ role admin, `/super/**` ⇒ role super. Les handlers revérifient. Contrôle `Origin` sur toute requête mutante.
+- `npm run seed:super` (variables `SUPER_ADMIN_USERNAME`/`SUPER_ADMIN_PASSWORD` ≥ 12 car.), idempotent, jamais via HTTP.
 
-## §4 Enrôlement employé (WebAuthn registration)
+## §4 Pointeuses (ADR-0003)
 
-1. Admin : `POST /api/admin/employees/:id/enrollment-link` → crée un `enrollment_tokens` (invalide les précédents non utilisés), retourne `{ url: <APP_URL>/enroll/<token>, expiresAt }`. UI affiche le lien + QR code (côté client).
-2. Le lien est ouvert **sur l'appareil de l'organisation** (§5bis ; sinon écran « appareil non autorisé »). `/enroll/[token]` (page publique + cookie d'appareil, token vérifié par hash, non expiré, non utilisé, employé non `disabled`, organisation active). Affiche nom de l'employé + bouton « Enregistrer mon empreinte ».
-3. `POST /api/enroll/options` {token} → options de création (`rpID=WEBAUTHN_RP_ID`, user.id = employee_id, `authenticatorSelection: { authenticatorAttachment: "platform", residentKey: "required", userVerification: "required" }`, `attestation: "none"`), défi stocké (`enroll`, lié à l'employé).
-4. `POST /api/enroll/verify` {token, response} → vérifie défi (consommation atomique), origine (`WEBAUTHN_ORIGIN`), `userVerified=true` ; insère `webauthn_credentials`, marque le token `used_at`, passe l'employé en `active`. Transaction unique.
-5. Erreurs gérées : jeton invalide/expiré/utilisé, téléphone sans biométrie configurée (message dédié), appareil non autorisé, annulation utilisateur, navigateur non compatible.
+- `POST /api/admin/pointeuses` {siteName} (session admin) : génère jeton 32 octets, stocke sha256, pose `__Host-octo_pointeuse` (HttpOnly; Secure; SameSite=Lax; Max-Age 1 an), **ferme la session admin** du téléphone, redirige `/pointer`. UI : « Enregistrer ce téléphone comme pointeuse » dans `/admin/pointeuses`.
+- `requirePointeuse(req)` : cookie → hash → ligne non révoquée → organisation active ; met à jour `last_seen_at` ; sinon 403 `{code:"pointeuse_invalide"}` (message « Téléphone non enregistré »). Utilisé par `/api/pointeuse/config`, `/api/punch`, `/api/punch/sync`, `/api/punch/pin`.
+- `DELETE /api/admin/pointeuses/:id` ⇒ `revoked_at` (effet immédiat), trace dans `audit_log`.
 
-## §5 Pointage (WebAuthn authentication)
+## §5 Chiffrement des données biométriques (ADR-0005)
 
-1. `/pointer` (page publique réservée à l'appareil activé §5bis, optimisée mobile, logo, gros bouton « Pointer »).
-2. `POST /api/punch/options` → options d'authentification **sans allowCredentials** (credential découvrable), `userVerification: "required"`, défi `punch` stocké. Rate limit par IP.
-3. `POST /api/punch/verify` {response} → retrouve le credential par `credential_id` (non révoqué), employé `active`, org `active` ; vérifie défi (consommé atomiquement), origine, RP ID, signature, `userVerified`, compteur strictement croissant (si l'authentificateur renvoie 0 de façon constante, tolérer 0→0 comme le permet la spec) ; met à jour le compteur.
-4. Type du pointage (calculé côté serveur dans la même transaction, verrou sur l'employé) : soit N = `organizations.missing_exit_after_hours` (16 par défaut, modifiable). Dernier pointage de l'employé = `in` et plus récent que N heures ⇒ `out` ; sinon ⇒ `in`. Si dernier = `in` et ≥ N heures ⇒ nouvelle `in` (la précédente est une Sortie manquante). N est relu à chaque pointage ; le changer ne réécrit pas l'historique.
-5. Anti double-appui : si un pointage du même employé existe depuis < 10 s, ne pas en créer ; renvoyer le pointage existant avec `duplicate: true`.
-6. Réponse : `{ employeeName, type, punchedAt (ISO UTC), orgTimezone, today: [{type, punchedAt}] }`. L'écran affiche en heure locale de l'organisation (`Intl.DateTimeFormat`).
-7. Heure : uniquement `now()` serveur.
+- `src/server/crypto/biometric.ts` : AES-256-GCM, clé `BIOMETRIC_KEYS` (JSON `{version: base64}`, version courante `BIOMETRIC_KEY_VERSION`), nonce 12 octets aléatoire, données associées = id de ligne. Format : `nonce || ciphertext || tag`. API : `encrypt(plain, aad)`, `decrypt(blob, aad, keyVersion)`. Rotation : nouvelles écritures avec la version courante, lecture de toutes versions.
+- Descripteur = `Float32Array(1024)` ⇒ 4096 octets avant chiffrement. Les endpoints d'image : session admin de l'organisation, déchiffrement en mémoire, `Cache-Control: no-store`, `Content-Type: image/jpeg`.
 
-## §5bis Appareil unique par organisation (ADR-0004)
+## §6 Enrôlement du visage (admin, en présence de l'employé)
 
-- Au plus un appareil actif par organisation. `/pointer`, `/enroll/*`, `POST /api/punch/*`, `POST /api/enroll/*` exigent le cookie `__Host-octo_device` ; l'espace admin n'est pas concerné.
-- Activation : `/admin/appareil` → `POST /api/admin/device/activation-code` (8 caractères + QR, 15 min, usage unique, haché). Sur le smartphone : `/activate` (saisie ou scan du code) → `POST /api/device/activate` : jeton aléatoire 32 octets, hash dans `kiosk_devices`, cookie `__Host-octo_device` (HttpOnly; Secure; SameSite=Lax; Max-Age 1 an). Une nouvelle activation révoque l'appareil précédent (confirmation admin) ; les employés dont la passkey n'existe pas sur le nouveau téléphone sont réenrôlés (réinitialisation d'empreinte §4).
-- Chaque requête de pointage/enrôlement : cookie → hash → appareil non révoqué → organisation active ; l'organisation de l'employé/credential doit égaler celle de l'appareil, sinon 403 générique « Appareil non autorisé ».
-- Pourquoi un jeton en plus de WebAuthn : une passkey Android peut se synchroniser et servir sur un autre téléphone ; seul le jeton lie le pointage à l'appareil.
-- Limite connue : sur un appareil partagé, n'importe quelle empreinte du système déverrouille n'importe quelle passkey ; l'identité de la personne n'est pas prouvée (ADR-0004).
-- Paramètres de l'organisation éditables par l'administrateur (`/admin/parametres`) : `missing_exit_after_hours` (entier 1–48).
+- Écran `/admin/employes/[id]/visage` (session admin ; tout appareil avec caméra, y compris la pointeuse après reconnexion admin). Étapes : (1) case de consentement obligatoire ; (2) 3 à 5 captures guidées (face, légère rotation gauche, droite, [+2]) ; (3) PIN : l'employé saisit 4 chiffres deux fois ; (4) récapitulatif.
+- Contrôle qualité côté client à chaque capture : un seul visage ; taille ≥ `min_face_size_px` ; confiance détection ≥ 0.6 ; éclairage (luminance moyenne du visage dans [70, 190] et contraste suffisant) ; netteté (variance du Laplacien ≥ seuil) ; pas de clignement/bouche ouverte pendant la capture. Message précis si échec.
+- `POST /api/admin/employees/:id/face` {descriptors: number[1024][3..5], referencePhoto (JPEG base64 ≤ 150 Ko), pin, consent: true} : validation de forme (1024 finis, valeurs dans une plage plausible), **cohérence interne** (similarité entre chaque paire ≥ `similarity_threshold`, sinon refus « captures de personnes différentes ou trop dissemblables »), chiffrement, transaction : ancien profil `deleted_at`, nouveau profil + templates, `pin_hash` (argon2id), employé `active`, `consent_at`. Journal.
+- `DELETE /api/admin/employees/:id/face` : suppression physique des templates et de la photo de référence ; employé `pending_face`. Journal.
 
-## §6 Interface (direction artistique)
+## §7 Pointage en ligne
 
-Inspiration : openhr/openhr (AdminLTE 3). Tokens : barre latérale `#343a40`, entrée active `#007bff`, fond `#f4f6f9`, cartes blanches ombrées, tuiles « small-box » (vert `#28a745`, cyan `#17a2b8`, jaune `#ffc107`, bleu `#007bff`) avec icône et pied « Plus d'infos », texte `#212529`. Marque Manoir OCTOPUS : bleu dégradé `#00a8f0 → #0b2a8a` pour accents de marque (logo, bouton principal du pointage), or `#b8892b` pour détails (filets). Police : Source Sans 3 (comme AdminLTE).
+1. `/pointer` (requiert pointeuse valide via `GET /api/pointeuse/config`, qui renvoie les seuils et paramètres utiles au client). Écran 1 : **Entrée** / **Sortie** (gros boutons). Écran 2 : clavier numérique large pour le matricule (3–10 chiffres). Écran 3 : caméra frontale.
+2. Caméra : `getUserMedia({video:{facingMode:"user"}})` uniquement ; aucune `<input type=file>` ; refus ⇒ écran explicatif « Autorisez la caméra… » et pointage impossible.
+3. Boucle de validation (≤ 30 s, ~30 ms/itération), tous obligatoires : un seul visage ; taille ≥ `min_face_size_px` ; regard caméra (`facing center` + `looking center`) ; clignement valide (10–800 ms) ; confiance visage ≥ 0.6 ; `antispoof.real` ≥ `antispoof_threshold` ; `liveness.live` ≥ `liveness_threshold` ; distance 0.4–1.0. Si `challenge_enabled` : défi aléatoire (tourner à gauche ou à droite, détecté par `facing left/right`) avant la capture finale. Modules `antispoof` et `liveness` **activés explicitement** (désactivés par défaut dans Human).
+4. Capture : descripteur (1024) + photo JPEG ~480 px (qualité adaptative < 50 Ko) + scores. `POST /api/punch` {clientId (uuid), type, employeeCode, descriptor, photo, scores{liveness, antispoof, confidence}, blinkOk, challengeOk, deviceTime}.
+5. Décision serveur (transaction, verrou sur l'employé) :
+   a. `requirePointeuse`. b. Employé par `(org, code)` ; inconnu ou `disabled`/`pending_face` ⇒ tentative `refused` (photo + scores conservés, `employee_id` éventuellement null), message générique « Matricule ou visage non reconnu » (pas d'énumération).
+   c. Vérifie `blinkOk`, scores ≥ seuils. d. similarité = max sur les templates déchiffrés (formule portée de `human.match.similarity`, voir §14) ≥ `similarity_threshold`. Échec ⇒ `refused`, `face_failures += 1`, la réponse indique `offerPin: face_failures >= face_failures_before_pin`.
+   e. **Séquence** : dernier pointage accepté (`ok|validated|to_review`) de l'employé. `type = in` refusé si le dernier est `in` plus récent que `missing_exit_after_hours` ; `type = out` refusé s'il n'y a pas d'`in` ouvert. Refus ⇒ `refused` + raison `sequence`, message clair (« Vous avez déjà pointé votre entrée à HH:MM »).
+   f. Succès ⇒ `status ok`, `face_failures = 0`, `punched_at = received_at`.
+   g. Réponse : `{status, type, employeeName, punchedAt, orgTimezone, offerPin}` ; l'heure affichée est celle du serveur.
+6. Anti double-appui : même employé, même type, < 10 s ⇒ renvoie le pointage existant.
+7. Rate limit par pointeuse + IP.
 
-- Logo : `docs/assets/logo-octopus-manoir.png` (fond blanc ; produire variantes recadrée/carrée, favicon, icônes PWA 192/512). Dans la barre latérale sombre, placer le logo sur une pastille/bandeau blanc.
-- Page de connexion admin : carte centrée sur fond `#e9ecef`, logo au-dessus, champs identifiant/mot de passe avec icônes.
-- Layout admin : sidebar (Tableau de bord, Pointages, Employés, Appareil, Paramètres ; super : Organisations), topbar (burger, nom utilisateur, Déconnexion), responsive (sidebar repliable < 992 px).
-- `/pointer` et `/enroll/[token]` : plein écran mobile, sans sidebar, gros boutons (≥ 56 px), états : prêt, vérification, succès (vert), erreur (rouge).
-- `manifest.webmanifest` (nom « OctopusHR », `start_url=/pointer`, `display=standalone`) ; pas de service worker.
-- Tout le texte est en français ; états vides, chargement et erreurs soignés.
+## §8 Secours PIN
 
-## §7 Sécurité (exigences transverses)
+- Proposé après `face_failures_before_pin` échecs consécutifs. `POST /api/punch/pin` {clientId, type, employeeCode, pin, photo, scores?, deviceTime} : photo **obligatoire** ; vérif argon2id ; séquence identique §7.e ; succès ⇒ `status to_review`, raison `pin_fallback`, méthode `pin`.
+- `pin_failed_attempts += 1` à chaque PIN faux ; à `pin_max_attempts` ⇒ `pin_locked_until = now + pin_lock_minutes`, tentative `refused` ; compteur remis à zéro sur succès.
+- Admin : `POST /api/admin/employees/:id/pin-reset` (débloque, remet à zéro, l'employé choisit un nouveau PIN au prochain passage dans l'écran dédié ou l'admin saisit un PIN temporaire avec l'employé présent).
+- Le PIN n'est jamais disponible hors ligne (ADR-0004).
 
-- En-têtes : CSP stricte (pas d'inline hors nonce), HSTS, `X-Content-Type-Options`, `Referrer-Policy: same-origin`, `Permissions-Policy` (publickey-credentials-get/create autorisés pour self uniquement), `frame-ancestors 'none'`.
-- Rate limiting (§2 `rate_limits`) : login admin, activation d'appareil, `/api/punch/options`, `/api/enroll/*`.
-- Jetons à usage unique hachés ; défis à usage unique, 5 min.
-- Pas de secrets dans le dépôt ni dans les logs ; pas de PII dans les logs.
-- Messages d'erreur d'authentification non énumérants.
-- `npm audit --omit=dev` sans vulnérabilité haute/critique ; contrôle de secrets (gitleaks ou équivalent) avant déploiement.
-- Revue de sécurité par un agent dédié (skill `security-review`) + tests d'attaque inter-organisations (ticket 15).
+## §9 Mode hors ligne (ADR-0004)
 
-## §8 Environnement et déploiement
+- Service worker : précache coque + modèles ; stratégie « cache d'abord » pour les modèles (versionnés), « réseau d'abord avec repli » pour l'API de configuration (dernière config en cache).
+- `OfflineQueue` (IndexedDB) : `{clientId, type, employeeCode, descriptor:Float32Array, photo:Blob, scores, blinkOk, challengeOk, deviceTime, tries}`.
+- Hors ligne : mêmes contrôles de vivacité ; l'écran dit « Enregistré hors ligne — sous réserve » ; indicateur permanent `en ligne | hors ligne | N en attente`.
+- Synchro : `POST /api/punch/sync` {items[≤20]} idempotent sur `clientId` (déjà reçu ⇒ renvoie l'état existant). Le serveur applique §7 c–e **sans refuser** : échec de comparaison ⇒ `suspect` (raison `face_mismatch`), séquence incohérente ⇒ `suspect` (`sequence`), scores sous seuil ⇒ `suspect`, `deviceTime` dans le futur (> 5 min) ou > 7 jours ⇒ `suspect` (`clock_skew`) ; sinon `ok` avec `offline = true`. `punched_at = deviceTime`.
+- Déclencheurs : événement `online`, ouverture de `/pointer`, Background Sync si disponible, toutes les 60 s si file non vide. 403 `pointeuse_invalide` ⇒ file conservée, bandeau « Pointeuse révoquée ».
 
-Variables : `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (inutilisées), `SESSION_SECRET`, `WEBAUTHN_RP_ID`, `WEBAUTHN_ORIGIN`, `APP_URL`, `SUPER_ADMIN_USERNAME`, `SUPER_ADMIN_PASSWORD` (seed uniquement, retirée après usage). Vercel projet `octopushr`, production sur l'alias stable (`octopushr.vercel.app` par défaut) ; migrations appliquées par un script de déploiement explicite (jamais au build). Dépôt : `https://github.com/freddomas/octopushr.git`.
+## §10 Interface (direction artistique)
 
-## §9 Conventions de test
+Inspiration openhr/openhr (AdminLTE 3). Tokens : sidebar `#343a40`, actif `#007bff`, fond `#f4f6f9`, cartes blanches, tuiles « small-box » (vert `#28a745`, cyan `#17a2b8`, jaune `#ffc107`, bleu `#007bff`), police Source Sans 3. Marque Manoir OCTOPUS : dégradé `#00a8f0 → #0b2a8a`, or `#b8892b`. Logo `docs/assets/logo-octopus-manoir.png` (fond blanc ; variantes recadrée/carrée/favicon/icônes PWA ; pastille blanche sur fond sombre).
+- Admin : sidebar (Tableau de bord, Pointages, À vérifier, Employés, Pointeuses, Paramètres, Diagnostic, Journal ; super : Organisations), topbar, responsive.
+- `/pointer` : plein écran mobile, sans sidebar, boutons ≥ 56 px, états clairs (succès vert, refus rouge, sous réserve ambre), retour visuel sur le visage (cadre qui change de couleur, consignes textuelles).
+- `manifest.webmanifest` (start_url `/pointer`, standalone) ; service worker (§1).
+- Texte entièrement en français.
 
-- Postgres de test : schéma isolé par exécution (base Supabase de dev via `DATABASE_URL_TEST` ou Postgres local/Docker si disponible — à fixer au ticket 04), migrations appliquées au démarrage, fixtures `makeOrg`, `makeAdmin`, `makeEmployee`, `makePunch`.
-- WebAuthn en test : authentificateur virtuel CDP Playwright (`ctap2`, `internal`, `hasUserVerification`, `isUserVerified`, `hasResidentKey`).
-- Chaque ticket livre ses propres tests ; la suite complète doit rester verte (`npm test`, `npm run lint`, `npm run typecheck`, `npm run build`).
+## §11 Écran RH et revue
+
+- `/admin/pointages` : tableau paginé (50/p) : employé, matricule, type, heure locale, site (pointeuse), méthode, statut, scores, miniatures **photo captée | photo de référence** côte à côte (clic ⇒ grand format), durée de session, badge « Sortie manquante ». Filtres date, employé, statut, méthode.
+- `/admin/a-verifier` : file des statuts `to_review` et `suspect` ; actions **Valider** / **Rejeter** avec commentaire obligatoire (≥ 5 car.) ⇒ `validated`/`rejected` (un pointage rejeté n'est pas compté), `reviewed_by/at`, ligne `audit_log` (avant/après, commentaire).
+- `/admin/journal` : `audit_log` paginé et filtrable (action, admin, date). Actions tracées : validate, reject, enroll_face, delete_face, pin_reset, register_pointeuse, revoke_pointeuse, settings_update, consent.
+- Tableau de bord : tuiles Présents maintenant, Pointages aujourd'hui, À vérifier, Suspects ; derniers pointages.
+- Export CSV (`;`, BOM UTF-8, neutralisation des formules) sans photos.
+
+## §12 Paramètres et diagnostic
+
+- `/admin/parametres` : tous les champs de `org_settings` (validation par bornes, effet immédiat, journalisé). Aucun redéploiement.
+- `/admin/diagnostic` (caméra) : flux direct + panneau de scores en temps réel (nb visages, taille, confiance, antispoof, liveness, clignement ms, gestes, distance, similarité contre un employé choisi via `POST /api/admin/diagnostic/compare` **sans rien enregistrer**), marquage vert/rouge par seuil, boutons « Utiliser ces seuils » (pré-remplit Paramètres) et « Copier le rapport ». Mesures : temps de chargement des modèles (réseau vs cache), warm-up, ms/détection, ms/pointage complet ; export JSON.
+
+## §13 Sécurité (transverse)
+
+- En-têtes : CSP stricte (`script-src 'self' 'wasm-unsafe-eval'` si repli wasm, `worker-src 'self'`, `connect-src 'self'`, `img-src 'self' data: blob:`, `media-src 'self' blob:`), HSTS, nosniff, `Referrer-Policy: same-origin`, `Permissions-Policy: camera=(self)`, `frame-ancestors 'none'`.
+- Rate limiting : login admin, `/api/punch*`, enregistrement de pointeuse.
+- Jetons hachés ; secrets uniquement en variables d'environnement ; pas de PII ni de biométrie dans les logs ni dans `audit_log.details`.
+- Purge : tâche Vercel Cron quotidienne supprimant les `punches.photo_enc` plus vieux que `photo_retention_days` (la ligne reste, photo supprimée).
+- `npm audit --omit=dev` sans haute/critique ; scan de secrets ; revue `security-review` + tests d'attaque (isolation, pointage sans jeton, jeton révoqué, rejeu `clientId`, énumération de matricules, surcharge de payload, PIN force brute).
+
+## §14 Similarité côté serveur
+
+`src/server/face/similarity.ts` porte l'algorithme de `human.match.similarity` (distance de Minkowski ordre 2 entre deux `Float32Array(1024)`, puis normalisation `multiplier 25`, bornes `min 0.2`, `max 0.8` de la démo faceres) ; **test de parité** contre `@vladmandic/human` (devDependency) sur des vecteurs aléatoires et réels (tolérance 1e-6). La similarité d'un pointage = max sur les templates du profil.
+
+## §15 Environnement et déploiement
+
+Variables : `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (inutilisées), `SESSION_SECRET`, `BIOMETRIC_KEYS`, `BIOMETRIC_KEY_VERSION`, `APP_URL`, `CRON_SECRET`, `SUPER_ADMIN_USERNAME`, `SUPER_ADMIN_PASSWORD` (seed uniquement). Les variables `WEBAUTHN_*` sont supprimées. Vercel projet `octopushr` ; migrations par script explicite, jamais au build ; protection SSO Vercel à désactiver en production ; domaine de production stable. Dépôt `https://github.com/freddomas/octopushr.git`.
+
+## §16 Conventions de test
+
+- Postgres de test : schéma isolé par exécution, fixtures `makeOrg`, `makeAdmin`, `makeEmployee`, `makeFaceProfile`, `makePointeuse`, `makePunch`.
+- `ScriptedEngine` : produit des `FaceAnalysis` prédéfinis (descripteur, scores, gestes) pour piloter l'UI et l'API de bout en bout sans modèle.
+- Quelques tests « vrais modèles » (lents, tag `@models`) sur images fixtures **libres de droits ou synthétiques** (licence consignée) : même personne ⇒ accepté, personnes différentes ⇒ refusé.
+- Cas non automatisables (photo imprimée, vidéo rejouée, éclairage, performance téléphone) ⇒ procédure manuelle (ticket 25) + diagnostic (ticket 20).
+- `npm test`, `npm run lint`, `npm run typecheck`, `npm run build` doivent rester verts.

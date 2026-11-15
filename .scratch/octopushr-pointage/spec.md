@@ -1,102 +1,113 @@
-# Spec — OctopusHR : pointage biométrique (Manoir OCTOPUS)
+# Spec — OctopusHR : pointage par reconnaissance faciale (Manoir OCTOPUS)
 
-**Status:** ready-for-agent · Design détaillé : [lld.md](./lld.md) · Tickets : [issues/](./issues/)
+**Status:** ready-for-agent · Design détaillé : [lld.md](./lld.md) · Tickets : [issues/](./issues/) · Recherche : `docs/research/human-face-recognition.md`
+**Historique :** la première version utilisait l'empreinte digitale (WebAuthn). Abandonnée : un navigateur ne peut pas lier un doigt à une personne. Nouvelle direction : visage + matricule + téléphone enregistré.
 
 ## Problem Statement
 
-Les organisations n'ont pas de moyen simple et fiable de savoir quand leurs employés arrivent et partent. Les feuilles papier se falsifient et les applications natives imposent d'installer un APK. Les employés ont besoin de pointer en deux secondes depuis leur smartphone Android ; l'administrateur a besoin de voir, en ligne, tous les pointages de son organisation.
+Une organisation veut savoir de façon fiable qui arrive et part, sur un ou plusieurs sites, avec une connexion lente et instable, sans application native. Les feuilles papier se falsifient et un collègue peut « couvrir » un absent. L'administrateur doit voir tous les pointages avec la preuve (photo), et pouvoir régler la sévérité du système.
 
 ## Solution
 
-Une application web (SaaS, installable en raccourci d'écran d'accueil mais sans APK) :
-- L'**employé** utilise le smartphone Android unique de son organisation (« l'appareil »), ouvre la page de pointage dans Chrome, touche « Pointer », valide avec l'empreinte ; le serveur enregistre automatiquement une Entrée ou une Sortie avec sa propre horloge.
-- L'**administrateur** se connecte avec identifiant + mot de passe, gère ses employés (création, lien d'enrôlement, désactivation, réinitialisation d'empreinte, activation de l'appareil, seuil de Sortie manquante) et consulte le tableau des pointages de toute son organisation (filtres, durées, export CSV).
-- Le **super-administrateur** crée les organisations et leur premier administrateur.
-- Aucun autre module RH (congés, paie, planning…).
+Application web (SaaS) en français :
+- Un administrateur enregistre un téléphone Android comme **pointeuse** d'un site (jeton secret). Sans ce jeton, aucun pointage.
+- L'administrateur enrôle le **visage** de chaque employé en sa présence.
+- L'employé choisit Entrée ou Sortie, tape son **matricule**, regarde la caméra : contrôles de vivacité sur le téléphone, comparaison 1:1 décidée par le serveur, photo conservée. PIN de secours après 3 échecs. Fonctionne **hors ligne** avec synchronisation.
+- L'administrateur contrôle les pointages (photo captée à côté de la photo de référence, scores), traite les pointages à vérifier/suspects, et dispose d'un journal d'audit et d'un écran de diagnostic pour régler les seuils.
+- Pas d'autres modules RH.
 
 ## User Stories
 
-Employé
-1. As an employé, I want ouvrir un lien d'enrôlement sur mon téléphone, so that je lie mon empreinte à mon compte sans mot de passe.
-2. As an employé, I want que l'enrôlement exige la vérification de mon empreinte, so that personne d'autre ne puisse enregistrer mon empreinte.
-3. As an employé, I want un lien d'enrôlement à usage unique qui expire, so that un lien volé ne soit pas exploitable.
-4. As an employé, I want toucher un seul bouton « Pointer » puis valider mon empreinte, so that pointer prenne quelques secondes.
-5. As an employé, I want ne pas saisir d'identifiant ni de mot de passe, so that il n'y ait rien à oublier.
-6. As an employé, I want que l'application détermine seule s'il s'agit d'une Entrée ou d'une Sortie, so that je ne me trompe pas.
-7. As an employé, I want voir une confirmation claire (nom, type, heure locale de l'organisation), so that je sache que mon pointage est enregistré.
-8. As an employé, I want voir mes pointages du jour après avoir pointé, so that je vérifie que tout est cohérent.
-9. As an employé, I want que l'heure soit celle du serveur, so that l'horloge de mon téléphone ne puisse pas fausser mon pointage.
-10. As an employé, I want un message compréhensible si mon empreinte est refusée ou annulée, so that je sache quoi faire.
-11. As an employé, I want un message clair si mon téléphone ne supporte pas l'empreinte ou si mon navigateur n'est pas compatible, so that je sache vers qui me tourner.
-12. As an employé, I want qu'un oubli de Sortie de la veille n'inverse pas tous mes pointages suivants, so that mes données restent exploitables.
-13. As an employé, I want qu'un double appui accidentel ne crée pas deux pointages, so that mes heures soient exactes.
-14. As an employé désactivé, I want que mon pointage soit refusé avec un message explicite, so that je comprenne ma situation.
-15. As an employé ayant changé de téléphone, I want que mon administrateur me renvoie un lien d'enrôlement, so that je retrouve l'accès.
+Pointeuse
+1. As an administrateur, I want enregistrer le téléphone dans mes mains comme pointeuse d'un site, so that seul ce téléphone puisse servir au pointage.
+2. As an administrateur, I want que le téléphone garde un jeton secret propre, so that le lieu soit prouvé.
+3. As an administrateur, I want que ma session admin soit fermée sur la pointeuse après l'enregistrement, so that un employé ne puisse pas agir en admin.
+4. As an administrateur, I want voir la liste des pointeuses (site, date, dernière activité, statut), so that je sache lesquelles sont actives.
+5. As an administrateur, I want révoquer une pointeuse volée ou remplacée, so that elle ne puisse plus pointer immédiatement.
+6. As an employé, I want un message clair si je suis sur un téléphone non enregistré, so that je sache où pointer.
 
-Administrateur
-16. As an administrateur, I want me connecter avec identifiant et mot de passe, so that j'accède à mon espace.
-17. As an administrateur, I want être bloqué temporairement après plusieurs échecs, so that on ne puisse pas deviner mon mot de passe.
-18. As an administrateur, I want me déconnecter, so that je protège mon compte sur un poste partagé.
-19. As an administrateur, I want créer un employé (nom complet, matricule), so that il puisse pointer.
-20. As an administrateur, I want générer un lien d'enrôlement et un QR code pour un employé, so that je le lui transmette facilement.
-21. As an administrateur, I want voir qui est enrôlé, en attente d'enrôlement ou désactivé, so that je pilote le déploiement.
-22. As an administrateur, I want désactiver et réactiver un employé, so that un départ n'efface pas son historique.
-23. As an administrateur, I want réinitialiser l'empreinte enregistrée d'un employé, so that un employé qui change de situation ou dont l'empreinte est compromise puisse la ré-enregistrer.
-24. As an administrateur, I want un tableau de tous les pointages de mon organisation, so that je supervise les présences.
-25. As an administrateur, I want filtrer par période, employé et type, so that je retrouve une information vite.
-26. As an administrateur, I want voir les heures dans le fuseau de mon organisation, so that les données correspondent à la réalité locale.
-27. As an administrateur, I want voir la durée de chaque session (Entrée→Sortie) et repérer les sorties manquantes, so that je détecte les anomalies.
-28. As an administrateur, I want une page d'accueil avec présents maintenant, pointages du jour, employés actifs et sorties manquantes, so that j'ai l'essentiel d'un coup d'œil.
-29. As an administrateur, I want exporter le tableau filtré en CSV, so that je l'utilise dans mes outils.
-30. As an administrateur, I want ne jamais voir les données d'une autre organisation, so that la confidentialité soit garantie.
-31. As an administrateur, I want une interface utilisable sur mobile et sur ordinateur, so that je consulte partout.
+Enrôlement du visage
+7. As an administrateur, I want ajouter un employé avec son nom et un matricule numérique, so that il puisse être enrôlé.
+8. As an administrateur, I want capturer 3 à 5 images du visage (face, légère rotation gauche/droite) en présence de l'employé, so that le profil soit robuste.
+9. As an administrateur, I want un contrôle de qualité à chaque capture (un seul visage, taille suffisante, éclairage correct, netteté), so that les mauvaises captures soient refusées.
+10. As an administrateur, I want que la cohérence entre les captures soit vérifiée, so that deux personnes différentes ne finissent pas dans le même profil.
+11. As an administrateur, I want enregistrer une photo de référence, so that je puisse comparer visuellement plus tard.
+12. As an employé, I want choisir moi-même mon PIN à 4 chiffres à l'enrôlement, so that personne d'autre ne le connaisse.
+13. As an administrateur, I want confirmer que l'employé a été informé et consent, so that la collecte soit tracée.
+14. As an administrateur, I want ré-enrôler ou supprimer un profil facial, so that je corrige une erreur ou respecte une demande de suppression.
+15. As an administrateur, I want que les données biométriques soient chiffrées et jamais visibles d'un autre employé, so that la confidentialité soit respectée.
 
-Super-administrateur
-32. As a super-administrateur, I want créer une organisation (nom, fuseau horaire), so that un nouveau client démarre.
-33. As a super-administrateur, I want créer le premier administrateur de cette organisation avec un mot de passe initial, so that le client puisse se connecter.
-34. As a super-administrateur, I want lister, désactiver et réactiver les organisations, so that je gère les abonnements.
-35. As a super-administrateur, I want que mon compte soit créé par un script d'amorçage et non par une page publique, so that personne ne puisse s'auto-promouvoir.
+Pointage
+16. As an employé, I want choisir Entrée ou Sortie, so that mon intention soit explicite.
+17. As an employé, I want taper mon matricule sur un grand clavier numérique, so that le pointage soit rapide.
+18. As an employé, I want regarder la caméra frontale avec un retour visuel clair (cadre, consignes), so that je sache quoi faire.
+19. As an opérateur, I want que seule la caméra en direct soit utilisable (aucun fichier ni galerie), so that une photo ne soit pas présentée.
+20. As an opérateur, I want exiger un seul visage, une taille minimale, le regard vers la caméra, un clignement, et les modules liveness et antispoof, so that les usurpations simples échouent.
+21. As an opérateur, I want que le visage capté soit comparé uniquement au profil du matricule saisi, so that on ne cherche pas dans toute la base.
+22. As an opérateur, I want que la décision d'acceptation soit prise par le serveur, so that le navigateur ne décide pas.
+23. As an administrateur, I want régler les seuils de similarité, liveness et antispoof sans redéploiement, so that j'ajuste sur le terrain.
+24. As an opérateur, I want conserver une photo (~480 px, < 50 Ko) et les scores de chaque tentative, réussie ou non, so that tout soit auditable.
+25. As an employé, I want un message clair si ma séquence est incohérente (deux Entrées de suite, Sortie sans Entrée), so that je comprenne le refus.
+26. As an employé, I want pouvoir de nouveau faire une Entrée si j'ai oublié ma Sortie depuis plus longtemps que le seuil, so that je ne sois pas bloqué.
+27. As an employé, I want un message clair si l'accès à la caméra est refusé, so that je sache comment corriger.
+28. As an employé, I want une confirmation avec mon nom, le type et l'heure locale, so that je sache que c'est enregistré.
 
-Plateforme
-36. As an opérateur, I want que toutes les écritures sensibles soient validées côté serveur, so that aucune donnée client ne soit crue.
-37. As an opérateur, I want que les endpoints d'authentification soient limités en débit, so that la force brute soit freinée.
-38. As an opérateur, I want une application avec le logo du Manoir OCTOPUS et la direction artistique d'openhr, so that l'identité soit cohérente.
-39. As an opérateur, I want une application déployée en production sur Vercel avec migrations appliquées, so that la livraison soit reproductible.
+Secours PIN
+29. As an employé, I want pouvoir utiliser mon PIN après 3 échecs de reconnaissance, so that je ne sois pas bloqué par un mauvais éclairage.
+30. As an administrateur, I want que ces pointages soient marqués « à vérifier » avec photo obligatoire, so that je les contrôle.
+31. As an opérateur, I want un blocage temporaire après 5 PIN erronés, so that le PIN ne se devine pas.
+32. As an administrateur, I want réinitialiser le PIN et débloquer un employé, so that je dépanne rapidement.
 
-Appareil et paramètres
-40. As an administrateur, I want activer le smartphone de mon organisation avec un code à usage unique, so that seul cet appareil serve au pointage.
-41. As an administrateur, I want remplacer l'appareil (nouveau smartphone) en révoquant l'ancien, so that un téléphone perdu ne puisse plus pointer.
-42. As an employé, I want un message clair si j'essaie de pointer depuis un autre téléphone, so that je sache où aller pointer.
-43. As an administrateur, I want modifier le seuil de Sortie manquante de mon organisation (1 à 48 h), so that la règle corresponde à nos horaires.
-44. As an administrateur, I want que ce seuil s'applique au pointage, au tableau et au tableau de bord, so that les chiffres soient cohérents.
-45. As an opérateur, I want que le pointage soit impossible hors de l'appareil activé, même si une passkey est synchronisée ailleurs, so that la règle « un seul appareil » soit réelle.
+Hors ligne
+33. As an employé, I want pointer même sans réseau, so that une coupure ne bloque pas l'équipe.
+34. As an employé, I want voir « enregistré sous réserve » et le nombre de pointages en attente, so that je sache l'état.
+35. As an opérateur, I want que les contrôles de vivacité tournent hors ligne, so that la file ne contienne que des captures plausibles.
+36. As an opérateur, I want que la synchronisation ne crée jamais de doublon, so that un renvoi soit sans effet.
+37. As an administrateur, I want que les pointages dont la comparaison échoue à la synchronisation soient marqués suspects, jamais supprimés, so that je les juge.
+38. As an opérateur, I want qu'aucun descripteur d'employé ne soit copié sur le téléphone, so that un téléphone volé ne livre pas de biométrie.
+39. As an employé, I want un indicateur en ligne / hors ligne / N en attente, so that l'état soit visible.
+
+Contrôle RH
+40. As an administrateur, I want la liste des pointages avec photo captée et photo de référence côte à côte, scores et méthode, so that je vérifie d'un coup d'œil.
+41. As an administrateur, I want filtrer par date, employé et statut, so that je trouve vite.
+42. As an administrateur, I want une file dédiée des pointages « à vérifier » et « suspects », so that je traite l'essentiel.
+43. As an administrateur, I want valider ou rejeter avec un commentaire, so that la décision soit justifiée.
+44. As an administrateur, I want un journal d'audit de chaque validation, rejet, annulation, ré-enrôlement, révocation et changement de paramètre, so that tout soit traçable.
+45. As an administrateur, I want un tableau de bord (présents, pointages du jour, à vérifier, suspects), so that j'aie l'essentiel.
+46. As an administrateur, I want exporter le tableau filtré en CSV, so that je l'utilise ailleurs.
+47. As an administrateur, I want voir les heures dans le fuseau de mon organisation (Kinshasa par défaut), so that elles soient lisibles.
+
+Diagnostic, performance et données
+48. As an administrateur, I want un écran de diagnostic avec les scores en direct, so that je règle les seuils sur le téléphone réel.
+49. As an opérateur, I want mesurer le temps de chargement des modèles et le temps par pointage sur le téléphone réel, so that je juge si c'est acceptable.
+50. As an administrateur, I want que les photos de tentative soient purgées après une durée paramétrable, so that on ne garde pas des données inutilement.
+51. As an administrateur, I want ne jamais voir les données d'une autre organisation, so that l'isolation soit garantie.
+
+Comptes
+52. As an administrateur, I want me connecter par identifiant et mot de passe, être verrouillé après des échecs et me déconnecter, so that mon espace soit protégé.
+53. As a super-administrateur, I want créer, désactiver et réactiver des organisations avec leur premier administrateur, so that un client démarre.
+54. As a super-administrateur, I want que mon compte vienne d'un script d'amorçage, so that personne ne s'auto-promeuve.
+55. As an opérateur, I want l'application déployée sur Vercel avec migrations et secrets en place, so that la livraison soit reproductible.
 
 ## Implementation Decisions
 
-- Stack, rôle de Supabase, isolation par organisation : ADR-0001. Authentification employé : ADR-0002.
-- Trois rôles : super-administrateur et administrateur (mot de passe), employé (empreinte seule).
-- Multi-organisations dès le départ ; création par le super-administrateur uniquement (pas d'inscription publique).
-- Fuseau horaire IANA par organisation, défaut `Africa/Kinshasa` ; stockage UTC ; interface en français.
-- Un seul appareil (smartphone) par organisation pour le pointage et l'enrôlement (ADR-0004) ; l'espace admin reste accessible partout.
-- Pointage : alternance stricte Entrée/Sortie déterminée par le serveur ; seuil de Sortie manquante propre à l'organisation (16 h par défaut, modifiable par l'administrateur, 1–48 h) ; anti double-appui par fenêtre de 10 s ; heure serveur uniquement.
-- Anti-fraude : empreinte seule (pas de géolocalisation) — arbitrage utilisateur.
-- Lecture seule du tableau des pointages : aucune correction manuelle (hors périmètre).
-- Direction artistique : AdminLTE-like inspirée de openhr/openhr, logo Manoir OCTOPUS (`docs/assets/logo-octopus-manoir.png`).
-- Détails (schéma, endpoints, flux, règles) : voir le LLD.
+- ADR-0001 stack ; ADR-0002 reconnaissance faciale 1:1 avec Human, décision serveur ; ADR-0003 pointeuses ; ADR-0004 hors ligne ; ADR-0005 données biométriques. Détails dans le LLD.
+- Un seul rôle « administrateur » (= RH). Super-administrateur pour les organisations. Les employés n'ont pas de compte.
+- Matricule : 3 à 10 chiffres. Le type Entrée/Sortie est choisi par l'employé ; le serveur refuse les séquences incohérentes ; une Entrée est de nouveau permise si la dernière Entrée dépasse le seuil de sortie manquante.
+- Comparaison 1:1 ; similarité = max sur les descripteurs du profil ; seuils par organisation.
+- Le seam de test principal est `FaceEngine` (double scripté) côté client et les endpoints API côté serveur.
 
 ## Testing Decisions
 
-- Un bon test vérifie le comportement externe (réponse HTTP, état en base, ce que voit l'utilisateur), pas l'implémentation.
-- Seam principal : les **route handlers / server actions** appelés avec une vraie base Postgres de test ; Playwright avec authentificateur WebAuthn virtuel (CDP) pour les parcours de bout en bout.
-- Tests d'attaque inter-organisations obligatoires (ticket 15).
-- Pas d'antécédent dans le dépôt (projet neuf) ; les tickets posent les conventions.
+- Un bon test vérifie le comportement externe, pas l'implémentation.
+- Automatisé : décisions serveur (similarité, seuils, séquence, PIN, blocage, idempotence hors ligne, isolation), API, parcours E2E avec moteur simulé. Quelques tests lents avec les vrais modèles Human sur des images fixtures sous licence libre.
+- **Non automatisable de façon fiable** : photo imprimée, vidéo rejouée sur un autre téléphone, faible éclairage, contre-jour, performance sur le téléphone réel. Couverts par la procédure de test manuel, l'écran de diagnostic et le ticket de recette sur appareil.
 
 ## Out of Scope
 
-Pointage depuis plusieurs appareils d'une même organisation, identification de la personne au-delà de l'empreinte du système (ADR-0004), congés, paie, planning, corrections de pointage, application native/APK, géolocalisation/géofence, inscription publique d'organisations, mot de passe/PIN de secours pour employés, mode hors-ligne, notifications, rapports avancés, multi-langue, SSO, historique côté employé au-delà du jour courant.
+Géolocalisation, reconnaissance 1:N, empreinte digitale/WebAuthn, application native, congés, paie, planning, correction manuelle de l'heure d'un pointage, multi-langue, SSO, avis juridique de conformité.
 
 ## Further Notes
 
-- Prérequis humains (accès GitHub, Vercel, Supabase durables) : ticket 01.
-- Le répertoire de travail VPS cible est `/home/usr_codex/workspace/my_projects/OctopusHR` ; les documents sont rédigés ici et déplacés avec le dépôt au ticket 01.
-- Test biométrique réel impossible sur un navigateur de bureau sans capteur : le test final se fait sur le téléphone Android de l'utilisateur via le lien de production.
+- Lettre F absente dans le brief initial (A, B, C, D, E, G) : à confirmer si une section manque.
+- Hypothèses prises par défaut, à valider : plusieurs pointeuses par organisation ; administrateur = RH ; photos et descripteurs en Postgres chiffré (pas de Supabase Storage, qui exigerait une clé de service supplémentaire) ; PIN choisi par l'employé ; matricule numérique ; rétention des photos de tentative 90 jours ; PIN indisponible hors ligne ; heure d'un pointage hors ligne = heure de l'appareil, signalée si douteuse ; « annulation » = rejet par l'administrateur (pas d'édition d'heure).
