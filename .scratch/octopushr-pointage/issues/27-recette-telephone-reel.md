@@ -9,7 +9,7 @@
 
 **What to build:** l'utilisateur exécute la procédure du ticket 25 sur le téléphone de la pointeuse, règle les seuils avec l'écran de diagnostic, renvoie le rapport ; l'orchestrateur analyse les temps (chargement des modèles, pointage) et conclut sur leur acceptabilité, puis ouvre des tickets de correction si besoin (seuils, repli wasm, taille de modèles, défi aléatoire à activer).
 
-- [ ] Les 10 cas manuels exécutés avec résultat noté
+- [ ] Les 11 cas manuels exécutés avec résultat noté
 - [ ] Temps de chargement (1er chargement et depuis le cache) et temps par pointage mesurés sur le téléphone réel
 - [ ] Seuils finaux enregistrés dans `/admin/parametres`
 - [ ] Décision écrite : acceptable / à améliorer (avec actions)

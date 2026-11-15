@@ -39,7 +39,7 @@ Enrôlement du visage
 
 Pointage
 16. As an employé, I want choisir Entrée ou Sortie, so that mon intention soit explicite.
-17. As an employé, I want taper mon PIN sur un grand clavier numérique (saisie masquée), so that le pointage soit rapide.
+17. As an employé, I want taper mon PIN sur un grand clavier numérique (saisie masquée, chiffres redistribués aléatoirement à chaque saisie), so that un observateur ne déduise pas mon PIN de la position de mes doigts ni des traces sur l'écran.
 18. As an employé, I want regarder la caméra frontale avec un retour visuel clair (cadre, consignes), so that je sache quoi faire.
 19. As an opérateur, I want que seule la caméra en direct soit utilisable (aucun fichier ni galerie), so that une photo ne soit pas présentée.
 20. As an opérateur, I want exiger un seul visage, une taille minimale, le regard vers la caméra, un clignement, et les modules liveness et antispoof, so that les usurpations simples échouent.
